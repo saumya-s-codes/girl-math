@@ -1,0 +1,16 @@
+{
+  "name": "Not Today, Babe",
+  "short_name": "Not Today",
+  "description": "Track what you didn't buy and watch a bouquet grow toward something you really want.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3E9DA",
+  "theme_color": "#F3E9DA",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
