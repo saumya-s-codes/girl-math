@@ -29,5 +29,11 @@ const ART={{ART}};
 
 {{JS}}
 </script>
+<script>
+/* offline support: only where it can work (a real http/https address, not a preview or a local file) */
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)){
+  window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})});
+}
+</script>
 </body>
 </html>

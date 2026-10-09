@@ -73,7 +73,7 @@ const PROGRESS={
       restingPetals:p>=1?3:p>=.95?2:p>=.9?1:0,
       driftingPetalsMax:p>=.9?3:p>=.7?2:p>=.4?1:0,
       visitors:p>=.25,                /* butterflies pass by now and then */
-      restingButterflies:p>=.95?4:p>=.85?3:p>=.7?2:p>=.5?1:0,
+      restingButterflies:p>=.85?3:p>=.7?2:p>=.5?1:0,
       sparkleEvery:p<.03?0:Motion.lerp(1.1,.25,p),
       sparkleBurst:1+Math.floor(p*2.2),   /* seconds between ambient sparkles */
       complete:p>=1

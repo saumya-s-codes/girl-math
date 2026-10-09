@@ -1,15 +1,26 @@
 # Not Today, Babe
 
-A small, calm savings tracker. Every time you skip a coffee, a drink or an add-to-cart, you log it and a bouquet grows toward something you really want.
+A small, calm savings tracker. Every time you skip a coffee, a drink or an add-to-cart, you log it as a save and a bouquet grows toward something you really want.
 
 *Small choices → growth.*
 
 - Pick a goal (with an optional link to the item).
-- Tap a button when you skip something, then slide to the amount.
+- **Tap** a button to log your usual amount instantly (there's an Undo). **Press and hold** it to open the detailed screen and slide to a different amount. "Other" always opens the detailed screen. On that screen the slider runs from $0 up to what is left to reach your goal, and you can tap the amount bubble to type an exact number. Use **Edit** to rename the buttons, change their icons and set the usual amounts.
 - The vase fills, flowers open, butterflies arrive. At 100% there is one quiet celebration.
+- Tap "$… today" for your history: a seven-day chart (tap a bar to see that day's total and how many saves) and every save grouped by day.
+- Forgot to log a save? On the history screen, tap **＋ Add a past save**, pick what it was, then check the date (it starts on yesterday; tap it to pick any earlier day). It's added to that day, and counts toward your goal if the goal had already started.
+- Reached a goal? Tap **Claim** on its card and a **Bloomed!** screen celebrates with the full bouquet, a burst of confetti as it appears, a butterfly and petals that keep falling from the top of the screen, with a bold, glowing card that counts up how much you saved, an **Add new goal** button and a small **Back to tracker** link. Claimed goals are kept on the **Claimed** tab of the history screen, with the price, the day you claimed it and how many days it took.
 - Your data stays on your device (browser `localStorage`). No account, no server.
 
 It is a plain static site: HTML, CSS and vanilla JavaScript. No framework, no build dependencies beyond Python 3.
+
+## Screens
+
+Three screens:
+
+- **Tracker** (opens by default after the first visit, with or without a goal; the very first time the app is opened it starts on **Goals**): the growing bouquet, the progress ruler and the save buttons. Tap a button to log it, press and hold for details. The "$… today" pill opens the Log, and the goal card opens Goals. With no goal set, the goal card is a translucent **Enter goal** button, and tapping any save button pops up "Add a goal to get started".
+- **Log**: your history. A seven-day chart (tap a bar for that day), every save grouped by day, a button to add a past save, and a **Claimed** tab for goals you've reached.
+- **Goals**: a little garden of flowers across the bottom of the screen, with butterflies, sparkles and petals drifting over it, and the card where you enter what you're saving for (name, price, optional link and icon), or change it. **My tracker ›** at the top right goes back to the tracker.
 
 ## Run it
 
@@ -48,6 +59,7 @@ python3 scripts/build.py
 | `src/motion.js` | The shared clock, easing, tweens and flight paths. Knows nothing about flowers. |
 | `src/components.js` | `Flower`, `Stem`, `Leaf`, `Petal`, `Sparkle`, `Butterfly`. Each takes `size, x, y, rotation, opacity, animationState, animationIntensity, delay, duration`. |
 | `src/scene.js` | `Vase`, `Water`, `Bouquet`, `BotanicalScene`, `BotanicalProgress`, `ExpenseFlower`. |
+| `src/confetti.js` | The petal, leaf and sparkle burst that plays on every save. |
 | `src/app.js` | The screens, saving, and layout. |
 | `src/style.css`, `src/template.html` | Styles and the page shell. |
 
@@ -55,9 +67,13 @@ python3 scripts/build.py
 
 Sprites in `art.json` are looked up by name, for example `fl_pink_full`, `bf_purple_lw`, `pet0`, `spk1`. Keep the names, replace the images and their anchor points (`ax, ay` = base of the stem, `hx, hy` = centre of the head), then adjust `LAYOUT` in `src/progress.js` if sizes changed.
 
-### Motion lab
+## Offline
 
-Open the app with `#demo` on the end of the address (or use the "Motion lab" link on the goal screen) to scrub savings from 0–100%, the expense flower from $0–$50, and try each butterfly state. It also has a "simulate reduced motion" switch.
+The app registers a small service worker (`src/sw.js`, built into `docs/sw.js`) the first time it is opened from a real web address such as GitHub Pages. After that it opens instantly and works with no connection, and the font is kept too. Nothing is needed from you: `scripts/build.py` stamps every build with a new version, so after you rebuild and publish, people pick up the new version the next time they open the app and the old cached copy is deleted. It does nothing when the page is opened as a plain file or inside a preview.
+
+## Haptics
+
+Small vibrations answer your touches: a soft pulse when you log a save, a firmer one when a press-and-hold opens the details, ticks as you slide the amount bar, a double pulse when something is saved, and a longer pattern when a goal blooms. They use the vibration API where it exists (most Android phones) and a hidden switch control on iPhones with Safari 17.4 or newer. Where a device has neither, a soft ring opens where you touched instead. On the goals page, **Haptics: on/off** turns them on or off and **Test** sends a clear test pattern and tells you what your device supports.
 
 ## Accessibility
 

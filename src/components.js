@@ -129,7 +129,7 @@ class Flower extends Botanical{
     this._paintSway();this._paintHead();
   }
   /* one small, slow movement */
-  nudge(amount=2){if(Motion.reduced())return;this.tween({from:0,to:1,duration:1500,ease:Motion.ease.inOut,onUpdate:k=>{this._nudge=Math.sin(k*Math.PI)*amount;this._paintSway();this._paintHead()},onDone:()=>{this._nudge=0}})}
+  nudge(amount=2,ms=1500){if(Motion.reduced())return;this.tween({from:0,to:1,duration:ms,ease:Motion.ease.inOut,onUpdate:k=>{this._nudge=Math.sin(k*Math.PI)*amount;this._paintSway();this._paintHead()},onDone:()=>{this._nudge=0}})}
   set(props){if('growth' in props){this.apply(props.growth)}return super.set(props)}
 }
 

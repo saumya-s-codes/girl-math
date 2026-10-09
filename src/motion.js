@@ -31,8 +31,10 @@ const Motion=(()=>{
     let dt=(now-last)/1000;if(!(dt>0))dt=0;dt=Math.min(.05,dt);last=now;clock+=dt;
     for(const s of [...subs]){
       if(!subs.has(s)||s.paused)continue;
-      if(s.fps){s.acc+=dt;if(s.acc<1/s.fps)continue;const d=s.acc;s.acc=0;s.fn(clock,d)}
-      else s.fn(clock,dt);
+      try{
+        if(s.fps){s.acc+=dt;if(s.acc<1/s.fps)continue;const d=s.acc;s.acc=0;s.fn(clock,d)}
+        else s.fn(clock,dt);
+      }catch(err){subs.delete(s);console.error('animation stopped after an error',err)}   /* one broken animation must never freeze the rest */
     }
     inFrame=false;
     if(subs.size&&!document.hidden)raf=requestAnimationFrame(frame);

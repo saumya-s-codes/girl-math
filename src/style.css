@@ -62,7 +62,7 @@ h1 span{color:var(--olive);font-size:21px;vertical-align:middle}
 .goalchip .glink{font-size:14px;color:var(--olive);text-decoration:underline;font-weight:700}
 .goalchip .claim{margin-top:4px;padding:5px 14px;font-size:16px}
 .tiles{flex:1;min-width:0;display:grid;grid-template-columns:repeat(3,1fr);gap:8px 4px}
-.tile{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:14px}
+.tile{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:14px}
 .blob{width:54px;height:54px;display:grid;place-items:center;font-size:25px;transition:transform .2s var(--ease)}
 .tile:active .blob{transform:scale(.94)}
 .tile:nth-child(8n+1) .blob,.b1{background:var(--peach);border-radius:52% 48% 56% 44%/50% 56% 44% 50%}
@@ -89,7 +89,7 @@ h1 span{color:var(--olive);font-size:21px;vertical-align:middle}
 .tick{position:absolute;left:64px;transform:translateY(-50%);font-size:16px;color:var(--ink)}
 .thumb{position:absolute;left:0;width:50px;height:50px;margin-top:-25px;border-radius:50%;background:#FFFBF5;box-shadow:0 3px 12px rgba(120,80,50,.2);display:grid;place-items:center}
 .thumb svg{width:34px;height:34px;overflow:visible}
-.bubble{position:absolute;left:62px;margin-top:-18px;background:var(--mauve);color:#fff;border-radius:999px;padding:4px 16px;font-size:20px;font-weight:700;pointer-events:none;box-shadow:0 2px 8px rgba(150,90,100,.22)}
+.bubble{position:absolute;left:62px;margin-top:-18px;background:var(--mauve);color:#fff;border-radius:999px;padding:4px 16px;font-size:20px;font-weight:700;cursor:text;box-shadow:0 2px 8px rgba(150,90,100,.22)}
 .vase{flex:1;min-width:0;display:flex;justify-content:center;align-items:flex-end}
 #pv{width:76%;height:100%;display:flex;justify-content:center}
 #pv svg{height:100%;width:100%;overflow:visible}
@@ -122,19 +122,7 @@ h1 span{color:var(--olive);font-size:21px;vertical-align:middle}
 .item .x{color:var(--soft);font-size:14px;width:28px;height:28px}
 .empty{color:var(--soft);font-style:italic;text-align:center;margin-top:40px;font-weight:500;font-size:19px}
 
-/* motion lab (internal) */
-.demoscroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:22px;padding-bottom:30px}
-.demoscroll h3{font-size:22px;font-weight:700;margin-bottom:6px}
-.stage{background:var(--card);border-radius:22px;position:relative;overflow:hidden}
-.stage svg{display:block;width:100%;height:100%;overflow:visible}
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.chips button{background:var(--card);border-radius:999px;padding:6px 13px;font-size:16px;border:2px solid transparent}
-.chips button.on{border-color:var(--olive)}
-.demoscroll input[type=range]{width:100%;accent-color:#6F7A55;margin-top:10px}
-.demoscroll label{display:flex;gap:8px;align-items:center;font-size:16px;color:var(--soft)}
-.readout{font-size:17px;color:var(--soft);margin-top:4px}
-
-#toast{visibility:hidden;position:fixed;left:50%;bottom:22px;transform:translate(-50%,120px);background:var(--olive-d);color:#FBF6EE;padding:10px 22px;border-radius:999px;font-size:17px;font-weight:700;transition:transform .5s var(--ease);z-index:50;max-width:90vw;text-align:center}
+#toast{visibility:hidden;position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 12px);transform:translate(-50%,-140px);background:var(--olive-d);color:#FBF6EE;padding:10px 22px;border-radius:999px;font-size:17px;font-weight:700;transition:transform .5s var(--ease);z-index:50;max-width:92vw;text-align:center;white-space:nowrap;padding:9px 18px}
 #toast.show{visibility:visible;transform:translate(-50%,0)}
 @media (max-height:640px){h1{font-size:23px}.blob{width:46px;height:46px;font-size:21px}.tile{font-size:13px}.cat .blob{width:48px;height:48px}.ctitle{font-size:24px}.tag{display:none}}
 @media (prefers-reduced-motion:reduce){.screen{animation:none}.btn,.blob,#toast{transition:none}}
@@ -148,3 +136,306 @@ h1 span{color:var(--olive);font-size:21px;vertical-align:middle}
 .cprice input{width:100%;border:none;background:transparent;font:inherit;font-size:19px;color:var(--ink);padding:12px 0;min-width:0}
 .cpick{display:flex;flex-wrap:wrap;gap:6px;background:var(--card);border-radius:20px;padding:10px}
 .cpick button{font-size:24px;width:42px;height:42px;border-radius:50%}
+
+/* hold feedback: a soft ring that grows while you press */
+.tile.holding .blob{animation:hold .42s var(--ease) forwards}
+@keyframes hold{from{box-shadow:0 0 0 0 rgba(111,122,85,.0)}to{box-shadow:0 0 0 7px rgba(111,122,85,.22)}}
+.tundo{margin-left:14px;color:#FBF6EE;text-decoration:underline;font-size:16px;font-weight:700}
+@media (prefers-reduced-motion:reduce){.tile.holding .blob{animation:none}}
+
+/* icon picker for "Other" */
+.screen{position:relative}
+.cat .blob.pickable{cursor:pointer;position:relative}
+.pickable::after{content:'✎';position:absolute;right:-3px;bottom:-3px;width:21px;height:21px;display:grid;place-items:center;font-size:12px;background:var(--card);border:1.5px solid var(--line);border-radius:50%;color:var(--ink)}
+.cpickpanel{position:absolute;left:20px;right:20px;top:128px;z-index:30;background:var(--card);border-radius:22px;padding:12px;box-shadow:0 10px 30px rgba(120,80,50,.18)}
+.cpickpanel[hidden]{display:none}
+.cpick2{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;max-height:42vh;overflow-y:auto}
+.cpick2 button{font-size:25px;height:42px;border-radius:14px}
+.cpick2 button:active{background:var(--beige)}
+
+.bubin{width:78px;background:transparent;border:none;color:#fff;font:inherit;font-size:20px;font-weight:700;text-align:center;outline:none;padding:0;-moz-appearance:textfield}
+.bubin::-webkit-outer-spin-button,.bubin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.tick small{font-size:13px;color:var(--soft);font-weight:500;font-style:italic}
+
+.fresh{display:flex;gap:10px;align-items:flex-start;font-size:17px;color:var(--ink);padding:2px 6px}
+.fresh input{width:22px;height:22px;margin-top:3px;accent-color:#6F7A55;flex:0 0 auto}
+.fresh small{display:block;color:var(--soft);font-size:14px;font-weight:500}
+
+/* history */
+.weekhead{display:flex;gap:8px;align-items:baseline;font-size:17px;color:var(--soft);flex:0 0 auto;margin-top:-2px}
+.weekhead b{font-size:24px;color:var(--ink)}
+.week{display:flex;align-items:flex-end;gap:8px;height:96px;background:var(--card);border-radius:22px;padding:12px 14px 8px;flex:0 0 auto}
+.wcol{flex:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px}
+.wcol span{font-size:14px;color:var(--soft)}
+.wcol .wbar{width:100%;max-width:26px;border-radius:10px;background:var(--peach);min-height:4px;transition:height .6s var(--ease)}
+.wcol.t .wbar{background:var(--mauve)}
+.wcol.t span{color:var(--ink);font-weight:700}
+.wcol{position:relative}
+.wcol .wbar{flex:0 0 auto}
+.dayhead{display:flex;justify-content:space-between;font-size:16px;font-style:italic;color:var(--soft);padding:14px 2px 2px}
+
+.sampbox{display:flex;gap:12px;align-items:center;background:var(--card);border-radius:22px;padding:12px 14px;flex:0 0 auto}
+.sampbox .st{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.sampbox b{font-size:18px}
+.sampbox span{font-size:15px;color:var(--soft);line-height:1.15}
+.sampbox em{font-size:15px;color:var(--olive);font-style:normal;font-weight:700;margin-top:2px}
+.sampbox .btn{flex:0 0 auto;min-height:46px;touch-action:manipulation;white-space:nowrap}
+.ex{font-style:normal;font-size:12px;color:var(--soft);background:var(--beige);border-radius:999px;padding:1px 8px;margin-left:4px;vertical-align:2px;font-weight:600}
+
+/* past saves */
+.addpast{flex:0 0 auto;background:var(--olive);color:#FBF6EE;border-radius:999px;padding:12px 18px;font-size:19px;min-height:46px;touch-action:manipulation}
+.pastgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px 8px;margin-top:18px}
+.when{display:flex;align-items:center;gap:6px;flex:0 0 auto;flex-wrap:nowrap}
+.when .wl{font-size:16px;color:var(--soft);margin-right:0;flex:0 0 auto}
+.when button,.wpick{background:var(--card);border-radius:999px;padding:6px 11px;font-size:16px;white-space:nowrap;flex:0 0 auto;border:2px solid transparent;position:relative;cursor:pointer}
+.when button.on,.wpick.on{border-color:var(--olive)}
+.wpick input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+.whenhint{font-size:14px;font-style:italic;color:var(--soft);margin-top:-4px}
+.whenhint:empty{display:none}
+
+.when .wpick{flex:1;min-width:0;text-align:center;font-size:17px}
+
+/* the bars live inside their own track, so the day letters can never push them out of the card */
+.wcol{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;min-height:0}
+.wtrack{flex:1;min-height:0;width:100%;display:flex;align-items:flex-end;justify-content:center}
+.wcol .wbar{width:100%;max-width:26px;flex:0 0 auto}
+
+/* claimed */
+.tabs{display:flex;gap:4px;background:var(--card);border-radius:999px;padding:4px;flex:0 0 auto}
+.tabs button{flex:1;padding:8px 10px;border-radius:999px;font-size:18px;color:var(--soft)}
+.tabs button.on{background:var(--olive);color:#FBF6EE}
+.claimsum{font-size:17px;color:var(--soft);padding:2px 4px 10px}
+.claimsum b{color:var(--ink)}
+.cl{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:22px;padding:12px 14px;margin-bottom:10px}
+.cl .cltext{flex:1;min-width:0}
+.cl .gname{font-size:19px;font-weight:700;line-height:1.1}
+.cl .gsub{font-size:15px;color:var(--soft)}
+.cl .glink{font-size:14px;color:var(--olive);text-decoration:underline;font-weight:700}
+
+/* tap a bar to read it */
+.week{height:132px;padding:44px 14px 8px}
+button.wcol{background:none;padding:0;font:inherit;color:inherit;cursor:pointer;position:relative;touch-action:manipulation}
+.wcol .wlabel{font-size:14px;color:var(--soft)}
+.wcol.t .wlabel{color:var(--ink);font-weight:700}
+.wcol.sel .wbar{background:#EBAF98}
+.wcol.t.sel .wbar{background:var(--mauve)}
+.wtip{position:absolute;top:-38px;left:50%;transform:translateX(-50%);background:#FFFDF9;color:var(--ink);border:1.5px solid #F1D4C6;border-radius:14px;padding:2px 10px;white-space:nowrap;font-size:17px;z-index:2;box-shadow:0 4px 12px rgba(150,100,70,.14)}
+.wtip b{color:var(--ink)}
+.wtip small{font-size:13px;color:var(--soft);font-weight:500}
+.wtip[hidden]{display:none}
+.wcol.first .wtip{left:-6px;transform:none}
+.wcol.last .wtip{left:auto;right:-6px;transform:none}
+.whint{margin-left:auto;font-size:14px;color:var(--soft);font-weight:500}
+
+/* home button on the tracker */
+.hbtns{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex:0 0 auto}
+.hbtns .todaylink{margin-top:4px}
+.homebtn{width:38px;height:38px;border-radius:50%;background:var(--card);color:var(--ink);display:grid;place-items:center;touch-action:manipulation}
+
+/* Home Screen: a big vase of flowers running off the right edge */
+.welcome{position:relative}
+.whero{position:absolute;right:-36%;bottom:118px;width:122%;aspect-ratio:340/406;pointer-events:none;z-index:0}
+.whero svg{width:100%;height:100%;overflow:visible;display:block}
+.wtext,.wbtns{position:relative;z-index:1}
+.wbrand{font-size:19px;font-style:italic;color:var(--olive);font-weight:600;margin-bottom:6px}
+.welcome h1{font-size:40px;line-height:1.02}
+.wstats{display:flex;gap:18px;margin-top:18px;flex-wrap:wrap}
+.wstats div{display:flex;flex-direction:column}
+.wstats b{font-size:26px;line-height:1}
+.wstats span{font-size:15px;color:var(--soft);max-width:110px;line-height:1.1;margin-top:2px}
+.wbtns{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.wrow{display:flex;gap:8px}
+.wrow button{flex:1;background:rgba(251,246,238,.9);border-radius:999px;padding:11px 8px;font-size:18px;touch-action:manipulation;box-shadow:0 2px 10px rgba(150,100,70,.1)}
+
+/* goal entry lives on the Home Screen */
+.wform{position:relative;z-index:1;margin-top:auto;background:rgba(251,246,238,.95);border-radius:26px;padding:14px 16px 12px;box-shadow:0 8px 28px rgba(150,100,70,.14);max-height:66%;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.wfhead{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.wftitle{font-size:24px;font-weight:700;line-height:1.1}
+.wform .tag{font-size:15px;margin-top:2px}
+.wform .gform{margin-top:2px;gap:10px}
+.wform .gform input[type=text],.wform .gform input[type=number],.wform .gform input[type=url],.wform .gform input:not([type]){background:#FFFDF9;border:1.5px solid var(--line);padding:12px 18px;font-size:19px}
+.wform .emojis button{background:#FFFDF9}
+.wform .emojis button.on{border-color:var(--olive)}
+.wform .links{margin-top:0}
+
+.homebtn{font-size:20px}
+
+/* the tracker without a goal */
+.goalchip.empty{background:rgba(251,246,238,.5);border:2px dashed rgba(111,122,85,.45);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:var(--olive)}
+.goalchip.empty .gplus{font-size:36px;line-height:1;color:var(--olive);font-weight:500}
+.goalchip.empty .gname{font-size:19px;color:var(--olive);text-align:center}
+.wtop .todaylink{position:relative;z-index:1}
+
+/* the way back to the tracker should be easy to spot */
+#totracker{background:var(--olive);color:#FBF6EE;font-size:18px;font-weight:700;padding:10px 18px;min-height:44px;margin-top:2px;box-shadow:0 4px 14px rgba(88,98,63,.35);touch-action:manipulation}
+#totracker:active{transform:scale(.97)}
+
+/* keep the title on two lines: the button floats in the top-right corner */
+.wtop{display:block;position:relative}
+.wtop #totracker{position:absolute;top:0;right:0;margin:0;z-index:2}
+
+/* the goal card: high on the screen, comfortable type, and small enough that the vase shows beneath it */
+.wform{max-height:none;overflow:visible;margin-top:16px;padding:14px 16px 12px;gap:8px;background:rgba(251,246,238,.8);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.wform .wftitle{font-size:25px}
+.wform .tag{font-size:15px;margin-top:1px}
+.wform .gform{gap:9px;margin-top:2px}
+.wform .gform input:not([type=checkbox]){padding:11px 18px;font-size:18px}
+.wform .emojis{flex-wrap:nowrap;gap:2px;justify-content:space-between}
+.wform .emojis button{flex:1 1 0;min-width:0;max-width:36px;width:auto;height:34px;font-size:19px;padding:0}
+.wform .btn{padding:13px 20px;font-size:20px}
+.wform .links{gap:20px}
+.wform .links .textlink{font-size:14px}
+/* shorter phones: tuck everything in so it still fits without scrolling */
+@media (max-height:680px){
+  .wform{margin-top:12px;padding:12px 14px 10px;gap:6px}
+  .wform .wftitle{font-size:22px}
+  .wform .tag{font-size:14px;margin-top:0}
+  .wform .gform{gap:8px;margin-top:2px}
+  .wform .gform input:not([type=checkbox]){padding:10px 16px;font-size:17px}
+  .wform .emojis{flex-wrap:nowrap;gap:3px;justify-content:space-between}
+  .wform .emojis button{flex:1 1 0;min-width:0;max-width:38px;width:auto;height:34px;font-size:18px}
+  .wform .btn{padding:12px 20px;font-size:19px}
+  .wform .links .textlink{font-size:14px}
+  .welcome .wbrand{display:none}
+  .welcome h1{font-size:30px}
+}
+
+/* taller phones: let the vase sit lower so flowers and butterflies fill the space under the card */
+@media (min-height:681px){.whero{bottom:0}}
+
+/* the goals screen garden: plants behind the card, butterflies and sparkles floating over everything */
+.garden,.gfx{position:absolute;left:0;right:0;bottom:0;height:min(42vh,340px);pointer-events:none}
+.garden{z-index:2}
+.gfx{z-index:3}
+.garden svg,.gfx svg{display:block;width:100%;height:100%;overflow:visible}
+@media (min-height:681px){.whero{bottom:0}}
+
+/* goal icon: one + button that opens a picker */
+.iconrow{display:flex;align-items:center;gap:12px}
+.iconpick{flex:0 0 auto;width:52px;height:52px;border-radius:50%;background:#FFFDF9;border:2px dashed #D7C7AE;font-size:30px;line-height:1;color:var(--soft);display:grid;place-items:center;touch-action:manipulation}
+.iconpick.set{border:2px solid var(--line);color:inherit;font-size:28px}
+.iconhint{font-size:17px;color:var(--soft);font-style:italic}
+.gpanel{position:absolute;left:10px;right:10px;top:56px;z-index:6;background:#FFFDF9;border-radius:22px;padding:12px;box-shadow:0 12px 32px rgba(120,80,50,.22)}
+.gpanel[hidden]{display:none}
+.gpgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-height:208px;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;scrollbar-width:thin;padding:2px 2px 6px}
+.gpgrid button{font-size:34px;height:56px;border-radius:18px;padding:0}
+.gpgrid button:active{background:var(--beige)}
+
+/* the icon picker floats above everything, animations included */
+.welcome>.gpanel{position:absolute;left:20px;right:20px;z-index:9}
+
+/* the icon picker is a pop-up with a tail, unrolling out of the icon circle */
+.welcome>.gpanel{top:auto;transform-origin:calc(var(--cx,40px) + 8px) 100%;overflow:visible}
+.welcome>.gpanel::after{content:'';position:absolute;bottom:-8px;left:var(--cx,40px);width:16px;height:16px;background:#FFFDF9;transform:rotate(45deg);border-radius:0 0 4px 0;box-shadow:4px 4px 8px rgba(120,80,50,.1)}
+.gpanel.open{animation:gp-open .46s cubic-bezier(.2,.85,.25,1) both}
+.gpanel.closing{animation:gp-close .19s ease-in both}
+@keyframes gp-open{0%{opacity:0;transform:scale(.5,.12)}55%{opacity:1}100%{opacity:1;transform:none}}
+@keyframes gp-close{to{opacity:0;transform:scale(.6,.15)}}
+@media (prefers-reduced-motion:reduce){.gpanel.open,.gpanel.closing{animation:none}}
+
+/* "Add a goal to get started" */
+.modal{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:24px;background:rgba(75,58,48,.3);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);animation:m-fade .22s ease both}
+.modal.out{animation:m-fade .18s ease reverse both}
+.mcard{width:min(340px,100%);background:#FFFBF5;border-radius:28px;padding:26px 22px 18px;text-align:center;box-shadow:0 18px 48px rgba(90,60,40,.28);display:flex;flex-direction:column;align-items:center;gap:10px;animation:m-pop .3s cubic-bezier(.2,.85,.25,1) both}
+.mflower{font-size:46px;line-height:1}
+.mtitle{font-size:26px;font-weight:700;line-height:1.1}
+.mtext{font-size:17px;color:var(--soft);font-weight:500;line-height:1.25;margin-bottom:6px}
+.mcard .btn{margin-top:4px}
+.mcard .textlink{margin:2px 0 0;font-size:16px}
+@keyframes m-fade{from{opacity:0}to{opacity:1}}
+@keyframes m-pop{from{opacity:0;transform:translateY(14px) scale(.92)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.modal,.modal.out,.mcard{animation:none}}
+
+/* Bloomed! — the claim celebration */
+.bloomed{position:relative;gap:8px;text-align:center}
+.bloomed .bloomx{position:absolute;top:max(14px,env(safe-area-inset-top));right:16px;z-index:5}
+.bloomhero{flex:1 1 0;min-height:150px;display:flex;justify-content:center;align-items:flex-end;position:relative;margin-top:-4px}
+.bloomed h1{font-size:44px;line-height:1.02;text-align:center;text-wrap:balance;margin-top:2px}
+.bsub{font-size:21px;font-style:italic;color:var(--soft);line-height:1.2;font-weight:500}
+.bcard{display:flex;align-items:center;gap:16px;background:var(--card);border-radius:26px;padding:14px 18px;margin-top:4px;text-align:left}
+.bicon{flex:0 0 auto;width:72px;height:72px;border-radius:50%;background:#F8D9D4;display:grid;place-items:center;font-size:38px}
+.bsaved{font-size:30px;font-weight:700;color:var(--olive-d);line-height:1.05}
+.bline{font-size:17px;color:var(--soft);font-weight:500;line-height:1.2;margin-top:2px}
+.bsp{color:#F2C879;font-size:18px;margin:0 8px}
+.btn.outline{background:transparent;color:var(--olive-d);border:2px solid var(--olive);margin-top:0}
+@media (max-height:720px){.bloomed h1{font-size:34px}.bsub{font-size:18px}.bicon{width:56px;height:56px;font-size:30px}.bsaved{font-size:24px}.bline{font-size:15px}.bcard{padding:10px 14px}}
+
+.bubble [hidden]{display:none}
+.bubble{min-width:84px;text-align:center}
+.bubin{min-width:0;width:74px}
+
+/* the detailed screen: icon, item, date and note live together in one card above the button */
+.top .atag{flex:1;text-align:center;align-self:center;padding:0 6px}
+.dcard{flex:0 0 auto;background:var(--card);border-radius:24px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.drow{display:flex;align-items:center;gap:12px}
+.dfield{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.dname{border:none;border-bottom:2px solid var(--line);background:transparent;font:inherit;font-size:24px;font-weight:700;color:var(--ink);width:100%;padding:0 0 2px;border-radius:0}
+.dname::placeholder{color:#b8a690;font-weight:600}
+.dname:focus{outline:none;border-bottom-color:var(--olive)}
+.dhint{font-size:15px;color:var(--soft);font-style:italic;font-weight:500}
+.dcard .when,.dcard .whenhint{margin:0}
+.dcard .note{background:none;border-top:1px solid var(--line);border-radius:0;padding:8px 0 0}
+.screen>.apanel{position:absolute;left:20px;right:20px;z-index:9;top:auto;transform-origin:calc(var(--cx,40px) + 8px) 100%;overflow:visible}
+.screen>.apanel::after{content:'';position:absolute;bottom:-8px;left:var(--cx,40px);width:16px;height:16px;background:#FFFDF9;transform:rotate(45deg);border-radius:0 0 4px 0;box-shadow:4px 4px 8px rgba(120,80,50,.1)}
+
+/* simpler detailed screen: one row, the note only when asked for */
+.dcard{padding:10px 12px;gap:8px}
+.drow{gap:10px;align-items:center}
+.dicon{display:flex;flex-direction:column;align-items:center;gap:2px;flex:0 0 auto}
+.dicon .iconpick{width:50px;height:50px;font-size:26px}
+.dchg{font-size:12px;color:var(--soft);font-style:italic;white-space:nowrap}
+.dname{flex:1;min-width:0}
+.notebtn{flex:0 0 auto;font-size:16px;color:var(--olive-d);background:var(--beige);border-radius:999px;padding:7px 12px;white-space:nowrap;touch-action:manipulation}
+.notein{border:none;border-top:1px solid var(--line);background:transparent;font:inherit;font-size:18px;font-weight:600;color:var(--ink);padding:8px 2px 2px;width:100%}
+.notein:focus{outline:none}
+.notein::placeholder{color:#c2b19b}
+.notein[hidden],.notebtn[hidden]{display:none}
+#addbtn .bsp{color:#F2C879;font-size:20px;margin:0 8px}
+
+/* icon on the left, title with the note underneath, no lines */
+.dcard{padding:12px 14px}
+.drow{align-items:center;gap:12px}
+.dfield{gap:4px}
+.dname{border:none;border-bottom:0;padding:0;font-size:24px;line-height:1.15;background:transparent}
+.dname:focus{border-bottom:0}
+.dcard .notein{border:none;border-top:0;padding:0;font-size:17px;font-weight:600;color:var(--soft);background:transparent;width:100%}
+.dcard .notein::placeholder{color:#c2b19b;font-weight:500}
+.dcard .note{display:none}
+
+/* the bouquet on the detailed screen gets the room it needs to look full */
+#pv{width:124%;margin-left:-24%;height:100%}
+.vase{overflow:visible}
+
+.bloomed .backlink{margin:2px auto 0;font-size:16px}
+
+/* the saved-amount card: the joy of the screen */
+.bcard{position:relative;overflow:hidden;background:linear-gradient(135deg,#FFEEDC 0%,#FBD4CE 100%);border:2px solid #F3C2B5;box-shadow:0 12px 28px rgba(214,140,120,.3);padding:14px 18px 14px 14px;gap:14px}
+.bcard::after{content:'';position:absolute;inset:0;background:linear-gradient(110deg,transparent 38%,rgba(255,255,255,.6) 50%,transparent 62%);transform:translateX(-120%);animation:b-shine 1.4s ease 2.6s 1 both;pointer-events:none}
+@keyframes b-shine{to{transform:translateX(120%)}}
+.bcard .bicon{width:78px;height:78px;background:#FFFDF9;border:3px solid #fff;box-shadow:0 4px 12px rgba(214,140,120,.3);font-size:42px}
+.bcard .bsaved{font-size:46px;line-height:1;color:var(--olive-d);letter-spacing:-.5px}
+.bcard .bsaved small{font-size:21px;font-weight:600;color:#A06F5F;letter-spacing:0}
+.bcard .bline{color:#8E6657;font-size:17px;margin-top:4px}
+.bcard.pulse{animation:b-pulse .7s cubic-bezier(.2,.85,.25,1) both}
+@keyframes b-pulse{0%{transform:scale(1)}40%{transform:scale(1.045)}100%{transform:scale(1)}}
+.bspk{position:absolute;color:#F2B866;font-size:16px;animation:b-twinkle 2.6s ease-in-out infinite;pointer-events:none}
+.bspk.s1{top:8px;right:14px}
+.bspk.s2{bottom:10px;right:36px;font-size:12px;animation-delay:.9s}
+.bspk.s3{top:12px;left:104px;font-size:11px;animation-delay:1.7s}
+@keyframes b-twinkle{0%,100%{opacity:.25;transform:scale(.7)}50%{opacity:1;transform:scale(1.15)}}
+@media (max-height:720px){.bcard .bsaved{font-size:36px}.bcard .bicon{width:60px;height:60px;font-size:32px}.bcard .bline{font-size:15px}}
+@media (prefers-reduced-motion:reduce){.bcard::after,.bcard.pulse,.bspk{animation:none}}
+
+/* the saved-amount card is a fresh, light green */
+.bcard{background:linear-gradient(135deg,#F0F7E4 0%,#D6E8C6 100%);border-color:#BCD6A8;box-shadow:0 12px 28px rgba(111,138,85,.28)}
+.bcard .bicon{box-shadow:0 4px 12px rgba(111,138,85,.28)}
+.bcard .bsaved small{color:#6F8A55}
+.bcard .bline{color:#6B7F58}
+.bspk{color:#E9B95A}
+
+/* the visible stand-in for a vibration */
+.hring{position:fixed;z-index:95;width:34px;height:34px;border:2.5px solid rgba(111,122,85,.6);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%) scale(.35);opacity:.9;animation:hring .55s ease-out forwards}
+@keyframes hring{to{transform:translate(-50%,-50%) scale(2.7);opacity:0}}
+.hlinks{margin-top:-2px;gap:14px}
+.hlinks .textlink{font-size:14px}
+@media (prefers-reduced-motion:reduce){.hring{animation:none;opacity:0}}

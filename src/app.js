@@ -8,17 +8,20 @@ const DEFAULT_TILES=[
   {id:'food',emoji:'🥡',label:'Food',price:18,max:80,tag:'Home-cooked and proud.'},
   {id:'shopping',emoji:'🛍️',label:'Shopping',price:25,max:200,tag:'Closed the tab, kept the cash.'},
 ];
-const OTHER={id:'other',emoji:'＋',label:'Other',price:10,max:100,tag:'Every skip counts.',custom:true};
+const OTHER={id:'other',emoji:'＋',label:'Other',price:10,max:100,tag:'Every save counts.',custom:true};
 const EMOJI_CHOICES=['☕','🧋','🍹','🥡','🍪','🛍️','💄','🍕','🍔','🍟','🍰','🍦','🍷','🍺','🥗','🚕','🎬','🎮','👗','👟','💅','🧴','📚','🎧'];
 let TILES=[];
+const OTHER_EMOJIS=[...EMOJI_CHOICES,'🍫','🍩','🥂','🍸','🧁','🍜','🍣','🥐','🎟️','✈️','💐','🕯️','🧸','📱','💍','🛒','🚗','🏋️','💇','🎁'];
+let customEmoji=null,whenPast=false,whenDate=null,logTab='saves';
 const syncTiles=()=>{TILES=[...state.tiles,OTHER]};
 const niceMax=p=>Math.max(p<=8?40:p<=15?60:p<=25?100:p<=40?160:200,Math.ceil(p*2/4)*4);
-const WISH_EMOJIS=['💻','👜','👟','💄','✈️','💍','🎧','👗','🌸'];
+const WISH_EMOJIS=['💻','👜','👟','💄','✈️','💍','🎧','👗','🌸','📱','📷','🎮','🏠','🚗','🎁','🧳','📚','🛋️','⌚','🎟️','🏖️','🐶','🚲','🎸','🎨','🧴','💎','👠','🖥️','⌨️','📺','🎬','🎤','🎹','🥁','🎻','📖','✏️','🧶','🧵','👛','🧣','🧢','👒','👓','🕶️','🩰','👙','🧥','🧦','💅','💆','🛁','🪞','🏋️','🧘','⛷️','🏄','🏕️','🗼','🗽','🏝️','🚢','🚂','🛵','🏍️','🍽️','☕','🍷','🎂','🍰','🌷','🌹','🪴','🛏️','🪑','💡','🧺','🐱','🐰','🦋','🎓','💼','🔑','💰','🎄','🎈','🎀'];
+const ALL_EMOJIS=[...new Set([...WISH_EMOJIS,...OTHER_EMOJIS])];
 const KEY='not-today-babe-v3';
 let state={skips:[],wish:null,claimed:[],tiles:DEFAULT_TILES.map(t=>({...t}))};
 let pickRow=-1;
 syncTiles();
-let view='home',cat=null,amt=0,note='',customLabel='',draftEmoji='💻',memoryOnly=false,shown=null,viz=null,saving=false;
+let view='home',cat=null,amt=0,note='',customLabel='',draftEmoji=null,memoryOnly=false,shown=null,viz=null,saving=false,returnView='home',lastClaimed=null,commitAmtEdit=()=>{};
 
 /* Saving: uses the Claude viewer's storage when it exists, otherwise the browser's localStorage (GitHub Pages, Safari, Chrome...). */
 const Store={
@@ -33,8 +36,14 @@ const Store={
     return ok;
   }
 };
+function cleanSamples(){
+  if(!state.skips.some(s=>s.sample))return;
+  state.skips=state.skips.filter(s=>!s.sample);
+  if(state.wish&&state.sampleStart!=null)state.wish.start=state.sampleStart;
+  state.sampleStart=null;
+}
 async function load(){
-  try{const raw=await Store.get(KEY);if(raw){const s=JSON.parse(raw);state.skips=s.skips||[];state.wish=s.wish||null;state.claimed=s.claimed||[];if(Array.isArray(s.tiles)&&s.tiles.length===5)state.tiles=s.tiles;return}}catch(e){}
+  try{const raw=await Store.get(KEY);if(raw){const s=JSON.parse(raw);state.skips=s.skips||[];state.wish=s.wish||null;state.claimed=s.claimed||[];if(Array.isArray(s.tiles)&&s.tiles.length===5)state.tiles=s.tiles;state.hinted=!!s.hinted;state.visited=!!s.visited;state.haptics=s.haptics!==false;Haptics.set(state.haptics);cleanSamples();return}}catch(e){}
   try{const raw=await Store.get('not-today-babe-v2');if(raw){const s=JSON.parse(raw);state.skips=s.skips||[];state.wish=s.wish||null;state.claimed=s.claimed||[]}}catch(e){}
 }
 async function save(){if(!(await Store.set(KEY,JSON.stringify(state))))memoryOnly=true}
@@ -48,62 +57,183 @@ const uidS=()=>Math.random().toString(36).slice(2,9);
 const todaySkips=()=>state.skips.filter(s=>dayKey(s.ts)===dayKey(Date.now()));
 const wishSaved=()=>state.wish?sum(state.skips.filter(s=>s.ts>=state.wish.start)):0;
 const pctNow=()=>state.wish?Math.min(100,wishSaved()/state.wish.price*100):0;
-function toast(m,ms=2000){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),ms)}
+/* ---------- haptics: small physical answers to touches ----------
+   Android and most phones use the vibration API. iPhones in Safari 17.4+ answer to a hidden "switch" control,
+   which gives a soft tick. Where neither exists, nothing happens (and nothing breaks). */
+const Haptics=(()=>{
+  let on=true,last=0,lastTick=0,sw=null,lab=null,px=innerWidth/2,py=innerHeight/2;
+  const canVibrate=typeof navigator!=='undefined'&&typeof navigator.vibrate==='function';
+  document.addEventListener('pointerdown',e=>{px=e.clientX;py=e.clientY},true);
+  document.addEventListener('pointermove',e=>{px=e.clientX;py=e.clientY},true);
+  /* where nothing can be felt, show it instead: a soft ring that opens where you touched */
+  const visual=force=>{
+    if(!force&&matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+    const r=document.createElement('div');r.className='hring';r.style.left=px+'px';r.style.top=py+'px';
+    document.body.appendChild(r);setTimeout(()=>r.remove(),600);
+  };
+  const iosTick=()=>{
+    try{
+      if(!sw){
+        lab=document.createElement('label');lab.setAttribute('aria-hidden','true');
+        lab.style.cssText='position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01;pointer-events:none;overflow:hidden';
+        sw=document.createElement('input');sw.type='checkbox';sw.setAttribute('switch','');sw.tabIndex=-1;
+        lab.appendChild(sw);document.body.appendChild(lab);
+      }
+      lab.click();
+    }catch(e){}
+  };
+  const play=pattern=>{
+    if(canVibrate){try{navigator.vibrate(pattern)}catch(e){}return}
+    const p=Array.isArray(pattern)?pattern:[pattern];let t=0;
+    for(let i=0;i<p.length;i+=2){setTimeout(iosTick,t);t+=p[i]+(p[i+1]||0)}
+  };
+  const buzz=(pattern,gap=30,quiet=false)=>{
+    if(!on)return;
+    const now=performance.now();if(now-last<gap)return;last=now;
+    play(pattern);
+    if(!canVibrate&&!quiet)visual(false);
+  };
+  return{
+    light:()=>buzz(8),
+    medium:()=>buzz(16),
+    tick:()=>{const n=performance.now();if(n-lastTick<45)return;lastTick=n;buzz(6,0,true)},
+    success:()=>buzz([14,50,16]),
+    error:()=>buzz([26,40,26]),
+    celebrate:()=>buzz([22,70,22,70,46]),
+    set(v){on=!!v},
+    enabled:()=>on,
+    /* a clear pattern you can't mistake, plus the visible ring either way */
+    test(){
+      if(on){last=0;play([20,70,20,70,50])}
+      visual(true);
+      return{on,vibrate:canVibrate};
+    }
+  };
+})();
+
+function toast(m,ms=2000,action){
+  const t=$('#toast');t.textContent=m;
+  if(action){const b=document.createElement('button');b.className='tundo';b.textContent=action.label;b.onclick=()=>{Haptics.light();t.classList.remove('show');action.fn()};t.appendChild(b)}
+  t.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('show'),ms);
+}
 
 /* ---------- screens ---------- */
+function chipInner(){
+  const w=state.wish,pct=pctNow(),saved=wishSaved();
+  return `<div class="gicon">${w.emoji}</div>
+        <div class="gname">${esc(w.name)}</div>
+        <div class="gsub">${money(Math.min(saved,w.price))} of ${money(w.price)}</div>
+        ${w.url?`<a class="glink" id="golink" href="${esc(w.url)}" target="_blank" rel="noopener noreferrer">View item ↗</a>`:''}
+        ${pct>=100?'<button class="claim" id="claim">Claim</button>':''}`;
+}
+function goalHTML(){
+  return `<div class="screen welcome">
+    <div class="garden" id="garden" aria-hidden="true"></div><div class="gfx" id="gfx" aria-hidden="true"></div>
+    <div class="hrow wtop"><div class="wtext">
+      <div class="wbrand">Not Today, Babe ♡</div>
+      <h1>Little things<br>lead to big blooms</h1>
+    </div><button class="todaylink" id="totracker">My tracker ›</button></div>
+    ${goalForm()}
+    <div class="gpanel" id="gpanel" hidden><div class="tag" style="margin-bottom:8px">Pick an icon</div><div class="gpgrid">${WISH_EMOJIS.map(e=>`<button type="button" data-gemo="${e}" aria-label="Use ${e}">${e}</button>`).join('')}</div></div>
+  </div>`;
+}
+function bloomedHTML(){
+  const c=lastClaimed;
+  if(!c)return homeHTML();
+  return `<div class="screen bloomed">
+    <button class="icon bloomx" id="close" aria-label="Close">✕</button>
+    <div class="bloomhero" id="bloom" aria-hidden="true"></div>
+    <h1>${esc(c.name)} Bloomed!</h1>
+    <div class="bsub">All your little choices added up<br>to something big. ♡</div>
+    <div class="bcard"><span class="bspk s1" aria-hidden="true">✦</span><span class="bspk s2" aria-hidden="true">✦</span><span class="bspk s3" aria-hidden="true">✦</span>
+      <div class="bicon">${esc(c.emoji||'🌸')}</div>
+      <div class="btext"><div class="bsaved"><span id="bamt">${money(c.saved!=null?c.saved:c.price)}</span> <small>saved</small></div>
+        <div class="bline">You reached your goal for ${esc(c.name)}!</div></div></div>
+    <button class="btn" id="newgoal"><span class="bsp">✦</span> Add new goal <span class="bsp">✦</span></button>
+    <button class="textlink backlink" id="backtrk">Back to tracker</button>
+  </div>`;
+}
 function homeHTML(){
   const w=state.wish,pct=pctNow(),ts=todaySkips(),saved=wishSaved();
   const tiles=TILES.map(t=>`<button class="tile ${t.custom?'other':''}" data-cat="${t.id}"><span class="blob">${t.emoji}</span><span>${t.label}</span></button>`).join('');
   return `<div class="screen">
-    <div class="hrow"><h1>Little things<br>lead to big blooms <span>♡</span></h1><button class="todaylink" id="openlog">${money(sum(ts))} today ›</button></div>
+    <div class="hrow"><h1>Little things<br>lead to big blooms <span>♡</span></h1><div class="hbtns"><button class="todaylink" id="openlog">${money(sum(ts))} today ›</button></div></div>
     <div class="gwrap"><div id="scene"></div></div>
     <div class="dock">
-      <div class="goalchip" id="goalcard" role="button" tabindex="0" aria-label="Edit goal">
-        <div class="gicon">${w.emoji}</div>
-        <div class="gname">${esc(w.name)}</div>
-        <div class="gsub">${money(Math.min(saved,w.price))} of ${money(w.price)}</div>
-        ${w.url?`<a class="glink" id="golink" href="${esc(w.url)}" target="_blank" rel="noopener noreferrer">View item ↗</a>`:''}
-        ${pct>=100?'<button class="claim" id="claim">Claim</button>':''}
-      </div>
-      <div class="pick"><div class="q"><span>What did you skip?</span><button class="editlink" id="editbtns">Edit</button></div><div class="tiles">${tiles}</div></div>
+      <div class="goalchip ${w?'':'empty'}" id="goalcard" role="button" tabindex="0" aria-label="${w?'Edit goal':'Enter goal'}">${w?chipInner():'<div class="gplus">＋</div><div class="gname">Enter goal</div>'}</div>
+      <div class="pick"><div class="q"><span>What did you save on?</span><button class="editlink" id="editbtns">Edit</button></div><div class="tiles">${tiles}</div></div>
     </div>
   </div>`;
 }
-const tickHTML=max=>{let h='';for(let k=0;k<=4;k++)h+=`<span class="tick" style="top:${k*25}%">$${Math.round(max*(4-k)/4)}</span>`;return h};
+const tickHTML=max=>{let h='';for(let k=0;k<=4;k++)h+=`<span class="tick" style="top:${k*25}%">${money(k===0?max:Math.round(max*(4-k)/4))}${k===0?'<small> to goal</small>':''}</span>`;return h};
+const isoDay=off=>{const d=new Date();d.setDate(d.getDate()-off);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const fmtPicked=iso=>{const [y,m,d]=iso.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString(undefined,{month:'short',day:'numeric'})};
+const fmtLong=iso=>{
+  const [y,m,d]=iso.split('-').map(Number),dt=new Date(y,m-1,d);
+  const pretty=dt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+  return iso===isoDay(1)?'Yesterday · '+dt.toLocaleDateString(undefined,{month:'short',day:'numeric'}):pretty;
+};
+function chosenTs(){
+  if(!whenPast||!whenDate)return Date.now();
+  const [y,m,dd]=whenDate.split('-').map(Number),d=new Date(y,m-1,dd);
+  if(dayKey(d)===dayKey(Date.now()))return Date.now();
+  d.setHours(12,0,0,0);return +d;                                   /* a past day: midday, so it sorts sensibly */
+}
+function whenHint(){
+  if(!whenPast)return '';
+  const ts=chosenTs();
+  if(state.wish&&ts<state.wish.start)return 'That’s before this goal started, so it will show in your history but won’t count toward it.';
+  return '';
+}
 function addHTML(){
-  const t=cat,f=amt/t.max,idx=TILES.indexOf(t)+1;
+  const t=cat,f=amt/t.max,idx=t.idx+1;
   return `<div class="screen">
     <div class="top"><button class="icon" id="back" aria-label="Back">‹</button>
-      <div class="cat"><div class="blob ${t.custom?'b8':'b'+idx}">${t.emoji}</div>
-        <div class="ctitle">${t.custom?`<input id="clabel" maxlength="24" placeholder="What was it?" value="${esc(customLabel)}" aria-label="What you skipped">`:t.label}</div>
-        <div class="tag">${t.tag}</div></div>
       <button class="icon" id="close" aria-label="Close">✕</button></div>
     <div class="abody">
-      <div class="slider" id="slider" role="slider" tabindex="0" aria-label="Amount skipped" aria-valuemin="0" aria-valuemax="${t.max}" aria-valuenow="${amt}" aria-valuetext="${money(amt)}">
+      <div class="slider" id="slider" role="slider" tabindex="0" aria-label="Amount saved" aria-valuemin="0" aria-valuemax="${t.max}" aria-valuenow="${amt}" aria-valuetext="${money(amt)}">
         <div class="strack"></div>${tickHTML(t.max)}
         <div class="thumb" id="thumb" style="top:${(1-f)*100}%"><svg viewBox="-25 -25 50 50" aria-hidden="true"><use href="#s-fl_pink_full" transform="scale(.3) translate(-63.7 -62)"/></svg></div>
-        <div class="bubble" id="bubble" style="top:${(1-f)*100}%">${money(amt)}</div>
+        <div class="bubble" id="bubble" style="top:${(1-f)*100}%"><span id="bval">${money(amt)}</span><input id="bubin" class="bubin" type="text" inputmode="decimal" autocomplete="off" autocapitalize="off" spellcheck="false" hidden aria-label="Exact amount"></div>
       </div>
       <div class="vase"><div id="pv"></div></div>
     </div>
-    <div class="note"><div class="nh"><span>✎ Add a note (optional)</span><span id="nc">${note.length}/100</span></div>
-      <input id="note" maxlength="100" placeholder="Iced latte before class" value="${esc(note)}" aria-label="Note"></div>
-    <button class="btn" id="addbtn">Add to my log ✦</button>
+    <div class="dcard">
+      <div class="drow">
+        <div class="dicon"><button type="button" class="iconpick set" id="apickbtn" aria-label="Choose an icon" aria-expanded="false">${customEmoji||(t.custom?'🌼':t.emoji)}</button><span class="dchg">tap to change</span></div>
+        <div class="dfield">
+          <input id="alabel" class="dname" maxlength="24" placeholder="What was it?" value="${esc(customLabel)}" aria-label="What you saved on">
+          <input id="note" class="notein" maxlength="100" placeholder="Add a note (optional)" value="${esc(note)}" aria-label="Note">
+        </div>
+      </div>
+      ${whenPast?`<div class="when"><span class="wl">Date</span>
+        <label class="wpick on"><span id="wlabel">${esc(fmtLong(whenDate))}</span><input type="date" id="wdate" max="${isoDay(0)}" value="${whenDate}" aria-label="Pick a date"></label></div>
+      <div class="whenhint" id="whenhint">${whenHint()}</div>`:''}
+    </div>
+    <div class="gpanel apanel" id="apanel" hidden><div class="tag" style="margin-bottom:8px">Pick an icon</div><div class="gpgrid">${ALL_EMOJIS.map(e=>`<button type="button" data-aemo="${e}" aria-label="Use ${e}">${e}</button>`).join('')}</div></div>
+    <button class="btn" id="addbtn"><span class="bsp">✦</span> Add to my log <span class="bsp">✦</span></button>
   </div>`;
 }
-function goalHTML(){
+/* saves logged while no goal was set count toward the next goal (anything newer than the last claim) */
+function startForNewGoal(){
+  const lastClaim=Math.max(0,...(state.claimed||[]).map(c=>c.claimedAt||0));
+  const loose=state.skips.filter(s=>s.ts>lastClaim).map(s=>s.ts);
+  return loose.length?Math.min(...loose)-1000:Date.now();
+}
+function goalForm(){
   const w=state.wish,first=!w;
-  return `<div class="screen">
-    <div class="head2"><h1>${first?'Let’s plant<br>your first bloom ♡':'Your goal'}</h1>${first?'':'<button class="icon" id="close" aria-label="Close">✕</button>'}</div>
-    <div class="tag" style="margin-top:-4px">${first?'Pick something to save for. Every skip waters it.':'Change what you’re saving for.'}</div>
+  return `<div class="wform">
+    <div class="wfhead"><div><div class="wftitle">${first?'Plant your first bloom ♡':'Your goal'}</div>
+      <div class="tag">${first?'Pick something to save for. Every save waters it.':'Change what you’re saving for.'}</div></div>
+    </div>
     <div class="gform">
       <input id="wname" maxlength="40" placeholder="What are you saving for?" value="${w?esc(w.name):''}" aria-label="Goal name">
       <input id="wprice" type="number" inputmode="decimal" min="1" placeholder="How much is it? ($)" value="${w?w.price:''}" aria-label="Goal price">
       <input id="wurl" type="url" inputmode="url" autocapitalize="off" autocorrect="off" placeholder="Link to the item (optional)" value="${w&&w.url?esc(w.url):''}" aria-label="Link to the item">
-      <div class="emojis">${WISH_EMOJIS.map(e=>`<button type="button" class="${e===draftEmoji?'on':''}" data-emoji="${e}" aria-label="Pick ${e}">${e}</button>`).join('')}</div>
+      <div class="iconrow"><button type="button" class="iconpick ${draftEmoji?'set':''}" id="gpickbtn" aria-label="Choose an icon" aria-expanded="false">${draftEmoji||'＋'}</button><span class="iconhint" id="gpickhint">${draftEmoji?'Tap to change the icon':'Add an icon (optional)'}</span></div>
       <button class="btn" id="savegoal">${first?'Plant it':'Save goal'}</button>
     </div>
-    <div class="links"><button class="textlink" id="openlab">Motion lab</button>${w?'<button class="textlink" id="reset">Start over</button>':''}</div>
+    <div class="links hlinks"><button class="textlink" id="hapt">Haptics: ${Haptics.enabled()?'on':'off'}</button><button class="textlink" id="haptest">Test</button></div>
   </div>`;
 }
 function customHTML(){
@@ -119,100 +249,184 @@ function customHTML(){
     <button class="btn" id="donetiles">Done</button>
   </div>`;
 }
-function logHTML(){
-  const ts=todaySkips();
+const dayLabel=ts=>{
+  const d=new Date(ts),t=new Date(),y=new Date();y.setDate(t.getDate()-1);
+  if(dayKey(d)===dayKey(t))return'Today';if(dayKey(d)===dayKey(y))return'Yesterday';
+  return d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+};
+function pastpickHTML(){
+  const tiles=TILES.map(t=>`<button class="tile ${t.custom?'other':''}" data-past="${t.id}"><span class="blob">${t.emoji}</span><span>${esc(t.label)}</span></button>`).join('');
   return `<div class="screen">
-    <div class="head2"><h1>Today · ${money(sum(ts))}</h1><button class="icon" id="close" aria-label="Close">✕</button></div>
-    <div class="log">${ts.length?ts.slice().reverse().map(s=>`
-      <div class="item"><span>${s.emoji}</span><span class="l">${esc(s.label)}${s.note?`<small>${esc(s.note)}</small>`:''}</span><span class="a">${money(s.amount)}</span>
-      <button class="x" data-del="${s.id}" aria-label="Remove ${esc(s.label)}">✕</button></div>`).join(''):'<div class="empty">Nothing yet today.<br>Walk past the coffee shop and come back. ☕</div>'}</div>
-    ${memoryOnly?'<p class="tag" style="text-align:center">Saving isn’t available here, so this session won’t be kept.</p>':''}
+    <div class="head2"><h1>Add a past save</h1><button class="icon" id="close" aria-label="Close">✕</button></div>
+    <div class="tag" style="margin-top:-4px">Forgot to log something? Pick what it was, then choose the day. For a donut or anything else, use Other.</div>
+    <div class="pastgrid">${tiles}</div>
   </div>`;
 }
-const PRESETS=[0,10,25,50,68,75,90,100],EXP=[0,5,10,20,30,40,50],BFS=['resting','fluttering','hovering','flying','landing','celebrating'];
-function demoHTML(){
+function claimedHTML(){
+  const list=state.claimed||[];
+  if(!list.length)return '<div class="empty">Nothing claimed yet.<br>When a goal is full, tap Claim on its card and it will live here. 🌸</div>';
+  const total=list.reduce((t,c)=>t+(c.price||0),0);
+  const fmt=ts=>new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+  return `<div class="claimsum"><b>${list.length}</b> claimed · <b>${money(total)}</b> saved up</div>`+list.map((c,i)=>{
+    const days=c.claimedAt&&c.start?Math.max(1,Math.round((c.claimedAt-c.start)/86400000)):null;
+    return `<div class="cl"><div class="gicon">${esc(c.emoji||'🌸')}</div>
+      <div class="cltext"><div class="gname">${esc(c.name)}</div>
+        <div class="gsub">${money(c.price)}${c.claimedAt?` · claimed ${fmt(c.claimedAt)}`:''}${days?` · ${days} day${days===1?'':'s'}`:''}</div>
+        ${c.url?`<a class="glink" href="${esc(c.url)}" data-openlink="${esc(c.url)}" target="_blank" rel="noopener noreferrer">View item ↗</a>`:''}</div>
+      <button class="x" data-delclaim="${i}" aria-label="Remove ${esc(c.name)} from claimed">✕</button></div>`}).join('');
+}
+function logHTML(){
+  const all=state.skips.slice().sort((a,b)=>b.ts-a.ts);
+  const groups=[];
+  all.forEach(s=>{const k=dayKey(s.ts);let g=groups[groups.length-1];if(!g||g.k!==k){g={k,ts:s.ts,items:[]};groups.push(g)}g.items.push(s)});
+  /* last seven days as soft bars */
+  const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=dayKey(d);days.push({k,label:d.toLocaleDateString(undefined,{weekday:'narrow'}),name:i===0?'Today':d.toLocaleDateString(undefined,{weekday:'short'}),count:state.skips.filter(s=>dayKey(s.ts)===k).length,total:sum(state.skips.filter(s=>dayKey(s.ts)===k)),today:i===0})}
+  const max=Math.max(1,...days.map(d=>d.total)),weekTotal=sum(days.map(d=>({amount:d.total})));
+  const weekCount=state.skips.filter(s=>days.some(d=>d.k===dayKey(s.ts))).length;
   return `<div class="screen">
-    <div class="head2"><h1>Motion lab</h1><button class="icon" id="close" aria-label="Close">✕</button></div>
-    <div class="demoscroll">
-      <section><h3>Savings</h3><div class="stage" style="height:330px" id="d-scene"></div>
-        <input type="range" id="d-range" min="0" max="100" value="68" aria-label="Progress"><div class="readout" id="d-read"></div>
-        <div class="chips" id="d-presets">${PRESETS.map(p=>`<button data-p="${p}">${p}%</button>`).join('')}</div>
-        <label style="margin-top:8px"><input type="checkbox" id="d-rm" ${Motion.reduced()?'checked':''}> Simulate reduced motion</label></section>
-      <section><h3>Expense flower</h3><div class="stage" style="height:290px;display:flex;justify-content:center"><div id="d-exp" style="width:44%;height:100%"></div></div>
-        <input type="range" id="d-exr" min="0" max="50" value="18" aria-label="Amount"><div class="readout" id="d-exread"></div>
-        <div class="chips" id="d-expre">${EXP.map(p=>`<button data-a="${p}">$${p}</button>`).join('')}</div></section>
-      <section><h3>Butterfly</h3><div class="stage" style="height:210px" id="d-bf"></div>
-        <div class="chips" id="d-states">${BFS.map(s=>`<button data-s="${s}">${s}</button>`).join('')}</div>
-        <div class="chips" id="d-colors">${['pink','purple','cream','blue'].map(c=>`<button data-c="${c}">${c}</button>`).join('')}</div></section>
-    </div>
+    <div class="head2"><h1>Your saves</h1><button class="icon" id="close" aria-label="Close">✕</button></div>
+    <div class="tabs" role="tablist"><button role="tab" data-tab="saves" class="${logTab==='saves'?'on':''}">Saves</button><button role="tab" data-tab="claimed" class="${logTab==='claimed'?'on':''}">Claimed${(state.claimed||[]).length?' · '+state.claimed.length:''}</button></div>
+    ${logTab==='claimed'?`<div class="log">${claimedHTML()}</div>`:`<button class="addpast" id="addpast">＋ Add a past save</button>
+    <div class="weekhead"><span>This week</span><b>${money(weekTotal)}</b><span>· ${weekCount} save${weekCount===1?'':'s'}</span><i class="whint">tap a bar</i></div>
+    <div class="week" role="group" aria-label="Saves over the last seven days">${days.map((d,i)=>`<button class="wcol ${d.today?'t':''} ${i===0?'first':''} ${i===6?'last':''}" data-wday="${i}" aria-label="${d.name}: ${money(d.total)}, ${d.count} save${d.count===1?'':'s'}"><div class="wtip" hidden><b>${money(d.total)}</b> <small>${d.name} · ${d.count} save${d.count===1?'':'s'}</small></div><div class="wtrack"><div class="wbar" style="height:${Math.max(4,Math.round(d.total/max*100))}%"></div></div><span class="wlabel">${d.label}</span></button>`).join('')}</div>
+    <div class="log">${groups.length?groups.map(g=>`
+      <div class="dayhead"><span>${dayLabel(g.ts)}</span><span>${money(sum(g.items))}</span></div>
+      ${g.items.map(s=>`<div class="item"><span>${s.emoji}</span><span class="l">${esc(s.label)}${s.note?`<small>${esc(s.note)}</small>`:''}</span><span class="a">${money(s.amount)}</span>
+        <button class="x" data-del="${s.id}" aria-label="Remove ${esc(s.label)}">✕</button></div>`).join('')}`).join(''):'<div class="empty">Nothing yet.<br>Walk past the coffee shop and come back. ☕</div>'}</div>`}
+    ${memoryOnly?'<p class="tag" style="text-align:center">Saving isn’t available here, so this session won’t be kept.</p>':''}
   </div>`;
 }
 
 /* ---------- mount the botanical visuals that belong to each screen ---------- */
-let rulerTw=null,fitRO=null;
-function disposeViz(){rulerTw&&rulerTw.cancel();rulerTw=null;fitRO&&fitRO.disconnect();fitRO=null;if(viz){[].concat(viz).forEach(v=>v&&v.destroy&&v.destroy());viz=null}}
+let rulerTw=null,fitRO=null,homeUI=null;
+function disposeViz(){homeUI=null;rulerTw&&rulerTw.cancel();rulerTw=null;fitRO&&fitRO.disconnect();fitRO=null;if(viz){[].concat(viz).forEach(v=>v&&v.destroy&&v.destroy());viz=null}}
 function mountViz(){
-  if(view==='home'&&state.wish){
-    const w=state.wish,p=pctNow()/100;
+  if(view==='bloomed'){
+    const hero=$('#bloom');
+    const fit=()=>{const W=hero.clientWidth,H=hero.clientHeight,s=Math.min(W,H*340/406);hero.firstChild&&(hero.firstChild.style.width=s+'px',hero.firstChild.style.height=(s*406/340)+'px')};
+    const holder=document.createElement('div');holder.style.cssText='position:relative;margin:0 auto';hero.appendChild(holder);
+    const f2=()=>{const W=hero.clientWidth,H=hero.clientHeight,s=Math.min(W,H*340/406);holder.style.width=s+'px';holder.style.height=(s*406/340)+'px'};
+    f2();fitRO=new ResizeObserver(f2);fitRO.observe(hero);
+    const bp=new BotanicalProgress(holder,{progress:1,sky:false});
+    const rain=new PetalRain(document.querySelector('.bloomed'));
+    const total=lastClaimed.saved!=null?lastClaimed.saved:lastClaimed.price,amtEl=$('#bamt'),card=document.querySelector('.bcard');
+    let counter=null;
+    if(!Motion.reduced()&&amtEl){
+      amtEl.textContent=money(0);
+      counter=Motion.tween({from:0,to:total,duration:1800,delay:700,ease:Motion.ease.out,
+        onUpdate:v=>{amtEl.textContent=money(Math.round(v))},
+        onDone:()=>{amtEl.textContent=money(total);card&&card.classList.add('pulse')}});
+    }
+    viz=[bp,rain,{destroy(){counter&&counter.cancel()}}];
+    setTimeout(()=>{
+      if(view!=='bloomed')return;
+      const r=hero.getBoundingClientRect();
+      Confetti.burst(r.left+r.width/2,r.top+r.height*.6,{count:70,power:1.3});          /* the confetti, as it arrives */
+      if(bp.scene)bp.scene.celebrate();
+    },400);
+  }else if(view==='goal'){
+    viz=new GardenScene($('#garden'),$('#gfx'));            /* the full, lush bouquet: butterflies, petals and sparkles included */
+  }else if(view==='home'){
+    const w=state.wish,p=w?pctNow()/100:0;
     const gw=$('.gwrap'),sc=$('#scene');
     let ruler=null;
     /* the scene sits on the left; the ruler gets its own gutter on the right so they never overlap */
     const fit=()=>{const W=gw.clientWidth,H=gw.clientHeight,s=Math.min(W-66+30,H*340/406);sc.style.width=s+'px';sc.style.height=(s*406/340)+'px';
       if(ruler){ruler.style.top=(sc.offsetTop+.11*sc.offsetHeight)+'px';ruler.style.height=(.855*sc.offsetHeight)+'px'}};
     fit();fitRO=new ResizeObserver(fit);fitRO.observe(gw);
-    viz=new BotanicalProgress(sc,{progress:p,goal:w.price,current:wishSaved(),from:shown});
-    /* the ruler: goal split in thirds, like the reference; the pill rises with the water */
-    const tick=k=>`<div class="rtick" data-f="${(3-k)/3}" style="top:${k*100/3}%"><span class="rl">${money(Math.round(w.price*(3-k)/3))}</span></div>`;
-    ruler=document.createElement('div');ruler.className='ruler';
-    ruler.innerHTML=`<div class="rline"></div><div class="rfill" id="rfill"></div>${[0,1,2,3].map(tick).join('')}<div class="rpill" id="rpill"></div>`;
-    gw.appendChild(ruler);fit();
-    const pill=$('#rpill'),ticks=[...ruler.querySelectorAll('.rtick')],setPill=v=>{pill.style.bottom=(v*100)+'%';pill.textContent=Math.round(v*100)+'%';$('#rfill').style.height=(v*100)+'%';ticks.forEach(t=>{const f=+t.dataset.f,near=Math.abs(v-f)<.085,dy=!near?0:(f>v||f===1)?-26:26;t.firstChild.style.transform=`translateY(${dy}px)`})};
-    const from=shown==null?p:shown;setPill(from);
-    if(Math.abs(from-p)>1e-4)rulerTw=Motion.tween({from,to:p,duration:1500,ease:Motion.ease.inOut,onUpdate:setPill});
+    viz=new BotanicalProgress(sc,{progress:p,goal:w?w.price:undefined,current:w?wishSaved():undefined,from:shown});
+    if(w){
+      /* the ruler: goal split in thirds, like the reference; the pill rises with the water */
+      const tick=k=>`<div class="rtick" data-f="${(3-k)/3}" style="top:${k*100/3}%"><span class="rl">${money(Math.round(w.price*(3-k)/3))}</span></div>`;
+      ruler=document.createElement('div');ruler.className='ruler';
+      ruler.innerHTML=`<div class="rline"></div><div class="rfill" id="rfill"></div>${[0,1,2,3].map(tick).join('')}<div class="rpill" id="rpill"></div>`;
+      gw.appendChild(ruler);fit();
+      const pill=$('#rpill'),ticks=[...ruler.querySelectorAll('.rtick')],setPill=v=>{homeUI.v=v;pill.style.bottom=(v*100)+'%';pill.textContent=Math.round(v*100)+'%';$('#rfill').style.height=(v*100)+'%';ticks.forEach(t=>{const f=+t.dataset.f,near=Math.abs(v-f)<.085,dy=!near?0:(f>v||f===1)?-26:26;t.firstChild.style.transform=`translateY(${dy}px)`})};
+      homeUI={v:0,setPill:null};homeUI.setPill=setPill;
+      const from=shown==null?p:shown;setPill(from);
+      if(Math.abs(from-p)>1e-4)rulerTw=Motion.tween({from,to:p,duration:1500,ease:Motion.ease.inOut,onUpdate:setPill});
+    }
     shown=p;
+    if(state.wish&&!state.hinted){state.hinted=true;save();setTimeout(()=>{if(view==='home')toast('Tap to log it. Hold for details.',3800)},1100)}   /* the hint waits until there is a goal to log toward */
   }else if(view==='add'){
     viz=new ExpenseFlower($('#pv'),{amount:amt,maxAmount:cat.max});
-  }else if(view==='demo')mountDemo();
+  }
 }
-function mountDemo(){
-  const goal=1500,rd=$('#d-read'),er=$('#d-exread');
-  const bp=new BotanicalProgress($('#d-scene'),{progress:.68,goal,current:1020});
-  const ef=new ExpenseFlower($('#d-exp'),{amount:18,maxAmount:50});
-  const showP=v=>{rd.textContent=`${v}% · ${money(v/100*goal)} of ${money(goal)}`};showP(68);
-  const showA=v=>{er.textContent=`${money(v)} · stage ${PROGRESS.expenseStage(v).toFixed(1)} of 5`};showA(18);
-  $('#d-range').oninput=e=>{const v=+e.target.value;showP(v);bp.update({progress:v/100,animate:true,duration:600})};
-  document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{const v=+b.dataset.p;$('#d-range').value=v;showP(v);bp.update({progress:v/100,animate:true})});
-  $('#d-exr').oninput=e=>{const v=+e.target.value;showA(v);ef.setAmount(v)};
-  document.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{const v=+b.dataset.a;$('#d-exr').value=v;showA(v);ef.setAmount(v)});
-  $('#d-rm').onchange=e=>{Motion.forceReduced(e.target.checked?true:null);render()};
-  /* butterfly stage */
-  injectSpriteDefs();
-  const bsvg=svgEl('svg',{viewBox:'0 0 360 210'},$('#d-bf'));
-  const A={x:72,y:150},Bp={x:288,y:140};
-  [A,Bp].forEach(p=>svgEl('ellipse',{cx:p.x,cy:p.y+16,rx:16,ry:3,fill:'#E6D9C5'},bsvg));
-  const g=svgEl('g',null,bsvg);let color='pink',bf=null,at=A;
-  const make=()=>{bf&&bf.destroy();bf=new Butterfly({variant:color,x:at.x,y:at.y,size:.42,restRotation:-6}).mount(g)};make();
-  const mark=(sel,attr,val)=>document.querySelectorAll(sel).forEach(b=>b.classList.toggle('on',b.dataset[attr]===val));
-  mark('[data-c]','c',color);mark('[data-s]','s','resting');
-  document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{color=b.dataset.c;mark('[data-c]','c',color);make();mark('[data-s]','s','resting')});
-  document.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{
-    const s=b.dataset.s;mark('[data-s]','s',s);
-    const other=at===A?Bp:A;
-    if(s==='flying')bf.setState('flying',{to:{x:other.x,y:other.y-40},onDone:()=>{at=other}});
-    else if(s==='landing')bf.setState('landing',{to:other,onDone:()=>{at=other;mark('[data-s]','s','resting')}});
-    else if(s==='celebrating')bf.setState('celebrating',{center:{x:180,y:100},radius:66,land:at,onDone:()=>mark('[data-s]','s','resting')});
-    else bf.setState(s);
-  });
-  viz=[bp,ef,{destroy(){bf&&bf.destroy();bsvg.remove()}}];
-}
-
 function render(){
   disposeViz();
-  if(!state.wish&&view!=='goal'&&view!=='demo')view='goal';
-  $('#app').innerHTML=view==='home'?homeHTML():view==='add'?addHTML():view==='goal'?goalHTML():view==='demo'?demoHTML():view==='custom'?customHTML():logHTML();
+  $('#app').innerHTML=view==='bloomed'?bloomedHTML():view==='home'?homeHTML():view==='add'?addHTML():view==='goal'?goalHTML():view==='custom'?customHTML():view==='pastpick'?pastpickHTML():logHTML();
   bind();mountViz();
 }
+function nav(v){returnView='home';go(v)}
 function go(v){if(saving)return;view=v;render()}
+
+/* ---------- nothing to log toward yet: ask for a goal first ---------- */
+function goalPrompt(){
+  if($('#goalprompt'))return;
+  Haptics.error();
+  const m=document.createElement('div');m.id='goalprompt';m.className='modal';
+  m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');m.setAttribute('aria-label','Add a goal to get started');
+  m.innerHTML=`<div class="mcard"><div class="mflower">🌸</div><div class="mtitle">Add a goal to get started</div>
+    <div class="mtext">Pick something you’re saving for. Every save will grow your bouquet toward it.</div>
+    <button class="btn" id="mgo">Add a goal</button><button class="textlink" id="mlater">Not now</button></div>`;
+  document.body.appendChild(m);
+  const close=()=>{document.removeEventListener('keydown',esc);m.classList.add('out');setTimeout(()=>m.remove(),180)};
+  const esc=e=>{if(e.key==='Escape')close()};
+  document.addEventListener('keydown',esc);
+  m.onclick=e=>{if(e.target===m)close()};
+  $('#mlater').onclick=close;
+  $('#mgo').onclick=()=>{close();draftEmoji=null;nav('goal')};
+  $('#mgo').focus();
+}
+const needsGoal=()=>{if(state.wish)return false;goalPrompt();return true};
+
+/* ---------- rapid logging: tap = log the usual amount, hold = detailed screen ---------- */
+const HOLD_MS=420;
+function refreshHome(){
+  if(view!=='home'||!state.wish||!viz||!homeUI){render();return}
+  const w=state.wish,p=pctNow()/100;
+  $('#openlog').textContent=`${money(sum(todaySkips()))} today ›`;
+  $('#goalcard').innerHTML=chipInner();bindChip();
+  viz.update({progress:p,goal:w.price,current:wishSaved(),animate:true});
+  rulerTw&&rulerTw.cancel();rulerTw=null;
+  const from=homeUI.v;
+  if(Math.abs(from-p)>1e-4)rulerTw=Motion.tween({from,to:p,duration:1500,ease:Motion.ease.inOut,onUpdate:homeUI.setPill});
+  shown=p;
+}
+function quickLog(id,el){
+  if(needsGoal())return;
+  const t=TILES.find(x=>x.id===id);if(!t)return;
+  if(t.custom){openCat(id);return}                       /* "Other" needs a name, so it goes to the detailed screen */
+  const skip={id:uidS(),label:t.label,emoji:t.emoji,amount:t.price,note:'',ts:Date.now()};
+  state.skips.push(skip);save();refreshHome();Haptics.success();
+  if(el)Confetti.fromElement(el);
+  if(viz&&viz.scene)viz.scene.sparkleAt(212+Math.random()*30,150+Math.random()*40,0);
+  toast(`${t.label} · ${money(t.price)} added`,3600,{label:'Undo',fn:()=>{state.skips=state.skips.filter(s=>s.id!==skip.id);save();refreshHome()}});
+}
+function bindTile(b){
+  let timer=null,held=false,down=false,sx=0,sy=0;
+  const cancel=()=>{clearTimeout(timer);timer=null;b.classList.remove('holding')};
+  b.onpointerdown=e=>{
+    down=true;held=false;sx=e.clientX;sy=e.clientY;b.classList.add('holding');
+    timer=setTimeout(()=>{held=true;cancel();Haptics.medium();openCat(b.dataset.cat)},HOLD_MS);
+  };
+  b.onpointermove=e=>{if(down&&timer&&Math.hypot(e.clientX-sx,e.clientY-sy)>10)cancel()};
+  b.onpointerup=()=>{if(!down)return;down=false;if(held)return;if(timer){cancel();quickLog(b.dataset.cat,b)}};
+  b.onpointercancel=b.onpointerleave=()=>{down=false;cancel()};
+  b.oncontextmenu=e=>e.preventDefault();
+  b.onclick=e=>e.preventDefault();
+  b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.shiftKey?openCat(b.dataset.cat):quickLog(b.dataset.cat,b)}};
+}
+function bindChip(){
+  if($('#golink'))$('#golink').onclick=e=>{e.stopPropagation();e.preventDefault();openLink(state.wish.url)};
+  if($('#claim'))$('#claim').onclick=e=>{
+    e.stopPropagation();
+    Haptics.celebrate();
+    lastClaimed=Object.assign({},state.wish,{claimedAt:Date.now(),saved:wishSaved()});
+    state.claimed.unshift(lastClaimed);state.wish=null;draftEmoji=null;shown=null;
+    save();view='bloomed';render();
+  };
+}
 
 /* Some viewers block links from opening. Try to open it; if that is blocked, copy it so it can be pasted into a browser. */
 function openLink(url){
@@ -230,42 +444,59 @@ function openLink(url){
 }
 
 /* ---------- actions ---------- */
-function openCat(id){cat=TILES.find(t=>t.id===id);amt=Math.min(cat.price,cat.max);note='';customLabel='';go('add')}
+const stepFor=max=>max<=100?1:max<=500?5:max<=2000?10:25;
+function sliderMax(){
+  const w=state.wish,left=w?w.price-wishSaved():0;
+  return Math.max(1,Math.ceil(left>0?left:(w?w.price:100)));
+}
+function openCat(id){if(needsGoal())return;const base=TILES.find(t=>t.id===id);cat=Object.assign({},base,{idx:TILES.indexOf(base),max:sliderMax()});customEmoji=null;amt=Math.min(cat.price,cat.max);note='';customLabel=base.custom?'':base.label;whenDate=whenPast?isoDay(1):null;go('add')}
 
-/* Add to my log: the button settles, the flower moves once, a single sparkle, then on. Under 600ms. */
+/* Add to my log: the button settles, then the flower answers slowly (a long sway, a ripple, a sparkle) before moving on. */
 function addSkip(){
   if(saving)return;
+  commitAmtEdit();
   if(!(amt>0)){toast('Slide to an amount first');return}
-  saving=true;
+  saving=true;Haptics.success();
   const btn=$('#addbtn');btn.classList.add('press');setTimeout(()=>btn.classList.remove('press'),110);
-  if(viz&&!Motion.reduced()){viz.nudge();viz.sparkle()}
+  btn.textContent='Saved ✓';                                   /* answers the tap straight away */
+  if(viz&&!Motion.reduced()){viz.nudge();viz.sparkle();Confetti.fromElement(btn,{count:48,power:1.1})}
   setTimeout(()=>{
-    const label=cat.custom?(customLabel.trim()||'Something fun'):cat.label;
+    const label=customLabel.trim()||(cat.custom?'Something fun':cat.label);
     const before=pctNow();
-    state.skips.push({id:uidS(),label,emoji:cat.custom?'🌼':cat.emoji,amount:amt,note:note.trim(),ts:Date.now()});
-    save();saving=false;view='home';render();
+    state.skips.push({id:uidS(),label,emoji:customEmoji||(cat.custom?'🌼':cat.emoji),amount:amt,note:note.trim(),ts:chosenTs()});
+    const wasPast=whenPast;whenPast=false;
+    save();saving=false;view=wasPast?'log':'home';render();
+    if(wasPast)toast('Added to your history');
     if(before<100&&pctNow()>=100)toast('Fully grown. Ready to claim.',2600);
-  },Motion.reduced()?60:420);
+  },Motion.reduced()?60:800);
 }
 
 /* vertical slider: amount -> flower */
-function setAmt(v){
-  const step=cat.max>100?5:1;
-  v=Math.max(0,Math.min(cat.max,Math.round(v/step)*step));
-  if(v===amt)return;
-  amt=v;const f=amt/cat.max;
-  $('#thumb').style.top=(1-f)*100+'%';$('#bubble').style.top=(1-f)*100+'%';$('#bubble').textContent=money(amt);
-  const s=$('#slider');s.setAttribute('aria-valuenow',amt);s.setAttribute('aria-valuetext',money(amt));
-  viz&&viz.setAmount(amt);
+function setAmt(v,exact){
+  try{
+    if(!cat||!isFinite(v))return;
+    const step=stepFor(cat.max);
+    v=exact?Math.round(v*100)/100:Math.round(v/step)*step;
+    v=Math.max(0,Math.min(cat.max,v));
+    if(v===amt)return;
+    amt=v;const f=amt/cat.max;
+    if(!exact)Haptics.tick();
+    const th=$('#thumb'),bu=$('#bubble'),bv=$('#bval'),s=$('#slider');
+    if(th)th.style.top=(1-f)*100+'%';
+    if(bu)bu.style.top=(1-f)*100+'%';
+    if(bv)bv.textContent=money(amt);
+    if(s){s.setAttribute('aria-valuenow',amt);s.setAttribute('aria-valuetext',money(amt))}
+    if(viz&&typeof viz.setAmount==='function')viz.setAmount(amt);
+  }catch(err){console.error('amount bar',err)}
 }
 function bindSlider(){
   const s=$('#slider'),tr=s.querySelector('.strack');let drag=false;
-  const fromEvent=e=>{const r=tr.getBoundingClientRect();setAmt((1-(e.clientY-r.top)/r.height)*cat.max)};
-  s.onpointerdown=e=>{drag=true;s.setPointerCapture(e.pointerId);fromEvent(e)};
+  const fromEvent=e=>{const r=tr.getBoundingClientRect();if(!(r.height>0))return;setAmt((1-(e.clientY-r.top)/r.height)*cat.max)};
+  s.onpointerdown=e=>{drag=true;try{s.setPointerCapture(e.pointerId)}catch(_){}fromEvent(e)};
   s.onpointermove=e=>{if(drag)fromEvent(e)};
   s.onpointerup=s.onpointercancel=()=>{drag=false};
   s.onkeydown=e=>{
-    const step=cat.max>100?5:1;
+    const step=stepFor(cat.max);
     if(e.key==='ArrowUp'||e.key==='ArrowRight'){setAmt(amt+step);e.preventDefault()}
     else if(e.key==='ArrowDown'||e.key==='ArrowLeft'){setAmt(amt-step);e.preventDefault()}
     else if(e.key==='Home'){setAmt(0);e.preventDefault()}
@@ -274,19 +505,27 @@ function bindSlider(){
 }
 
 function bind(){
-  document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>openCat(b.dataset.cat));
+  document.querySelectorAll('[data-cat]').forEach(bindTile);
   if($('#goalcard')){
-    const open=()=>{draftEmoji=state.wish.emoji;go('goal')};
+    const open=()=>{draftEmoji=state.wish?state.wish.emoji:null;nav('goal')};
     $('#goalcard').onclick=open;$('#goalcard').onkeydown=e=>{if(e.key==='Enter'&&e.target.id==='goalcard')open()};
-    if($('#golink'))$('#golink').onclick=e=>{e.stopPropagation();e.preventDefault();openLink(state.wish.url)};
+    bindChip();
   }
-  if($('#claim'))$('#claim').onclick=e=>{
-    e.stopPropagation();
-    state.claimed.unshift(state.wish);state.wish=null;draftEmoji='💻';shown=null;
-    save();render();toast('Treat yourself. You earned it.',2600);
-  };
-  if($('#openlog'))$('#openlog').onclick=()=>go('log');
-  if($('#editbtns'))$('#editbtns').onclick=()=>{pickRow=-1;go('custom')};
+  if($('#totracker'))$('#totracker').onclick=()=>go('home');
+  if($('#newgoal'))$('#newgoal').onclick=()=>{draftEmoji=null;nav('goal')};
+  if($('#backtrk'))$('#backtrk').onclick=()=>go('home');
+  if($('#openlog'))$('#openlog').onclick=()=>{logTab='saves';nav('log')};
+  document.querySelectorAll('[data-wday]').forEach(col=>col.onclick=()=>{
+    const on=!col.classList.contains('sel');
+    document.querySelectorAll('.wcol').forEach(c=>{c.classList.remove('sel');c.querySelector('.wtip').hidden=true});
+    if(on){col.classList.add('sel');col.querySelector('.wtip').hidden=false}
+  });
+  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{logTab=b.dataset.tab;render()});
+  document.querySelectorAll('[data-openlink]').forEach(l=>l.onclick=e=>{e.preventDefault();openLink(l.dataset.openlink)});
+  document.querySelectorAll('[data-delclaim]').forEach(b=>b.onclick=()=>{if(!confirm('Remove this from your claimed list?'))return;state.claimed.splice(+b.dataset.delclaim,1);save();render()});
+  if($('#addpast'))$('#addpast').onclick=()=>{if(needsGoal())return;go('pastpick')};
+  document.querySelectorAll('[data-past]').forEach(b=>b.onclick=()=>{whenPast=true;openCat(b.dataset.past)});
+  if($('#editbtns'))$('#editbtns').onclick=()=>{pickRow=-1;nav('custom')};
   document.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{const i=+b.dataset.pick;pickRow=pickRow===i?-1:i;render()});
   document.querySelectorAll('[data-emo]').forEach(b=>b.onclick=()=>{state.tiles[pickRow].emoji=b.dataset.emo;pickRow=-1;syncTiles();save();render()});
   document.querySelectorAll('[data-name]').forEach(i=>{
@@ -296,16 +535,111 @@ function bind(){
   document.querySelectorAll('[data-cprice]').forEach(i=>i.oninput=()=>{const n=parseFloat(i.value);if(n>0){const t=state.tiles[+i.dataset.cprice];t.price=n;t.max=niceMax(n);syncTiles();save()}});
   if($('#donetiles'))$('#donetiles').onclick=()=>go('home');
   if($('#resettiles'))$('#resettiles').onclick=()=>{if(!confirm('Put the buttons back the way they were?'))return;state.tiles=DEFAULT_TILES.map(t=>({...t}));pickRow=-1;syncTiles();save();render()};
-  if($('#openlab'))$('#openlab').onclick=()=>go('demo');
-  if($('#close'))$('#close').onclick=()=>go(view==='demo'&&!state.wish?'goal':'home');
-  if($('#back'))$('#back').onclick=()=>go('home');
+  if($('#close'))$('#close').onclick=()=>{
+    whenPast=false;
+    if(view==='pastpick')return go('log');
+    if(['log','goal','custom'].includes(view))return go(returnView);
+    go('home');
+  };
+  if($('#back'))$('#back').onclick=()=>{const p=whenPast;whenPast=false;go(p?'pastpick':'home')};
+  if($('#apickbtn')){
+    const btn=$('#apickbtn'),panel=$('#apanel'),scr=document.querySelector('.screen');
+    const place=()=>{
+      const sr=scr.getBoundingClientRect(),br=btn.getBoundingClientRect();
+      panel.style.bottom=(sr.bottom-br.top+14)+'px';
+      panel.style.setProperty('--cx',(br.left+br.width/2-(sr.left+20)-8)+'px');
+    };
+    const close=()=>{
+      if(panel.hidden)return;
+      btn.setAttribute('aria-expanded','false');document.removeEventListener('pointerdown',outside,true);
+      if(Motion.reduced()){panel.hidden=true;panel.classList.remove('open','closing');return}
+      panel.classList.remove('open');panel.classList.add('closing');
+      setTimeout(()=>{panel.hidden=true;panel.classList.remove('closing')},190);
+    };
+    const outside=e=>{if(!panel.contains(e.target)&&!btn.contains(e.target))close()};
+    const open=()=>{
+      place();panel.hidden=false;panel.classList.remove('closing');void panel.offsetWidth;panel.classList.add('open');
+      btn.setAttribute('aria-expanded','true');document.addEventListener('pointerdown',outside,true);
+    };
+    btn.onclick=()=>panel.hidden?open():close();
+    panel.querySelectorAll('[data-aemo]').forEach(b=>b.onclick=()=>{Haptics.light();customEmoji=b.dataset.aemo;btn.textContent=customEmoji;close()});
+  }
+  if($('#bubble')){
+    const bub=$('#bubble'),val=$('#bval'),inp=$('#bubin');let editing=false;
+    const commit=(apply=true)=>{
+      if(!editing)return;editing=false;
+      if(apply){
+        const v=parseFloat(String(inp.value).replace(',','.'));
+        if(isFinite(v)&&v>=0){try{setAmt(v,true)}catch(e){console.error(e)}}
+      }
+      inp.hidden=true;val.hidden=false;val.textContent=money(amt);
+    };
+    commitAmtEdit=()=>commit(true);
+    bub.onpointerdown=e=>e.stopPropagation();           /* don't let the slider grab it */
+    bub.onclick=()=>{
+      if(editing)return;editing=true;
+      inp.value=String(amt);val.hidden=true;inp.hidden=false;
+      inp.focus();try{inp.select()}catch(_){}
+    };
+    inp.onclick=e=>e.stopPropagation();
+    inp.onblur=()=>commit(true);
+    inp.onkeydown=e=>{
+      if(e.key==='Enter'){e.preventDefault();inp.blur()}
+      else if(e.key==='Escape'){commit(false);inp.blur()}
+    };
+  }
+  if($('#wdate')){
+    $('#wdate').onchange=e=>{
+      const v=e.target.value;
+      if(!v){e.target.value=whenDate;return}
+      if(v>isoDay(0)){toast('That day hasn’t happened yet');e.target.value=whenDate;return}
+      whenDate=v;$('#wlabel').textContent=fmtLong(v);$('#whenhint').textContent=whenHint();
+    };
+  }
   if($('#slider')){
     bindSlider();
-    $('#note').oninput=e=>{note=e.target.value;$('#nc').textContent=note.length+'/100'};
-    if($('#clabel'))$('#clabel').oninput=e=>{customLabel=e.target.value};
+    $('#note').oninput=e=>{note=e.target.value};
+    if($('#alabel'))$('#alabel').oninput=e=>{customLabel=e.target.value};
     $('#addbtn').onclick=addSkip;
   }
-  document.querySelectorAll('[data-emoji]').forEach(b=>b.onclick=()=>{draftEmoji=b.dataset.emoji;document.querySelectorAll('[data-emoji]').forEach(x=>x.classList.toggle('on',x===b))});
+  if($('#hapt')){
+    $('#hapt').onclick=()=>{
+      Haptics.set(!Haptics.enabled());state.haptics=Haptics.enabled();save();
+      $('#hapt').textContent='Haptics: '+(state.haptics?'on':'off');
+      if(state.haptics)Haptics.light();
+    };
+    $('#haptest').onclick=()=>{
+      const i=Haptics.test();
+      toast(!i.on?'Haptics are off. Tap "Haptics: off" to turn them on.'
+        :i.vibrate?'Vibration sent. Felt nothing? Check your phone’s vibration and silent settings.'
+        :'This device can’t vibrate here, so you’ll see a soft pulse instead.',4800);
+    };
+  }
+  if($('#gpickbtn')){
+    const btn=$('#gpickbtn'),panel=$('#gpanel'),wel=document.querySelector('.welcome');
+    const place=()=>{                                   /* sit just above the circle, with the little tail pointing at it */
+      const wr=wel.getBoundingClientRect(),br=btn.getBoundingClientRect();
+      panel.style.bottom=(wr.bottom-br.top+14)+'px';
+      panel.style.setProperty('--cx',(br.left+br.width/2-(wr.left+20)-8)+'px');
+    };
+    const close=()=>{
+      if(panel.hidden)return;
+      btn.setAttribute('aria-expanded','false');document.removeEventListener('pointerdown',outside,true);
+      if(Motion.reduced()){panel.hidden=true;panel.classList.remove('open','closing');return}
+      panel.classList.remove('open');panel.classList.add('closing');
+      setTimeout(()=>{panel.hidden=true;panel.classList.remove('closing')},190);
+    };
+    const outside=e=>{if(!panel.contains(e.target)&&!btn.contains(e.target))close()};
+    const open=()=>{
+      place();panel.hidden=false;panel.classList.remove('closing');void panel.offsetWidth;panel.classList.add('open');
+      btn.setAttribute('aria-expanded','true');document.addEventListener('pointerdown',outside,true);
+    };
+    btn.onclick=()=>panel.hidden?open():close();
+    panel.querySelectorAll('[data-gemo]').forEach(b=>b.onclick=()=>{
+      Haptics.light();draftEmoji=b.dataset.gemo;btn.textContent=draftEmoji;btn.classList.add('set');
+      $('#gpickhint').textContent='Tap to change the icon';close();
+    });
+  }
   if($('#savegoal'))$('#savegoal').onclick=()=>{
     const name=$('#wname').value.trim(),price=parseFloat($('#wprice').value);
     if(!name||!(price>0)){toast('Add a name and a price');return}
@@ -315,20 +649,27 @@ function bind(){
       if(!/^https?:\/\//i.test(url))url='https://'+url;
       try{const u=new URL(url);if(!u.hostname.includes('.'))throw 0;url=u.href}catch(e){toast('That link doesn’t look right');return}
     }
-    state.wish={name,price,emoji:draftEmoji,url,start:state.wish?state.wish.start:Date.now()};
+    state.wish={name,price,emoji:draftEmoji||'🌸',url,start:state.wish?state.wish.start:startForNewGoal()};
     if(first)shown=null;
-    save();view='home';render();toast(first?'Planted. Let’s grow it.':'Goal updated.');
+    save();Haptics.success();view='home';render();toast(first?'Planted. Let’s grow it.':'Goal updated.');
   };
   document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{state.skips=state.skips.filter(s=>s.id!==b.dataset.del);save();render()});
   if($('#reset'))$('#reset').onclick=()=>{
     if(!confirm('Wipe everything and start fresh?'))return;
-    state={skips:[],wish:null,claimed:[],tiles:state.tiles};shown=null;save();render();
+    state={skips:[],wish:null,claimed:[],tiles:state.tiles,hinted:true};shown=null;save();render();
   };
 }
 
 (async()=>{
   await load();syncTiles();injectSpriteDefs();
   if(state.wish)draftEmoji=state.wish.emoji;
-  view=location.hash==='#demo'?'demo':(state.wish?'home':'goal');
+  /* the very first time, open on the goals page; after that, always on the tracker */
+  const first=!state.visited&&!state.wish&&!state.skips.length&&!(state.claimed||[]).length;
+  state.visited=true;save();
+  view=first?'goal':'home';
   render();
 })();
+
+/* A small, honest message if anything unexpected happens, so the cause can be reported. */
+window.addEventListener('error',e=>{try{toast('Something went wrong: '+(e.message||'unknown error'),6000)}catch(_){}});
+window.addEventListener('unhandledrejection',e=>{try{toast('Something went wrong: '+((e.reason&&e.reason.message)||e.reason||'unknown error'),6000)}catch(_){}});
