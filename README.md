@@ -5,7 +5,7 @@ A small, calm savings tracker. Every time you skip a coffee, a drink or an add-t
 *Small choices → growth.*
 
 - Pick a goal (with an optional link to the item).
-- **Tap** a button to log your usual amount instantly (there's an Undo). **Press and hold** it to open the detailed screen and slide to a different amount. "Other" always opens the detailed screen. On that screen the slider runs from $0 up to what is left to reach your goal, and you can tap the amount bubble to type an exact number. Use **Edit** to rename the buttons, change their icons and set the usual amounts.
+- **Tap** a button to log your usual amount instantly (there's an Undo). **Press and hold** it until the ring fills (you feel a tick), then **let go** to open the detailed screen and slide to a different amount. Releasing first means a finger can never press anything on the new screen by accident. "Other" always opens the detailed screen. On that screen the slider runs from $0 up to what is left to reach your goal, and you can tap the amount bubble to type an exact number. Use **Edit** to rename the buttons, change their icons and set the usual amounts.
 - The vase fills, flowers open, butterflies arrive. At 100% there is one quiet celebration.
 - Tap "$… today" for your history: a seven-day chart (tap a bar to see that day's total and how many saves) and every save grouped by day.
 - Forgot to log a save? On the history screen, tap **＋ Add a past save**, pick what it was, then check the date (it starts on yesterday; tap it to pick any earlier day). It's added to that day, and counts toward your goal if the goal had already started.
@@ -70,10 +70,6 @@ Sprites in `art.json` are looked up by name, for example `fl_pink_full`, `bf_pur
 ## Offline
 
 The app registers a small service worker (`src/sw.js`, built into `docs/sw.js`) the first time it is opened from a real web address such as GitHub Pages. After that it opens instantly and works with no connection, and the font is kept too. Nothing is needed from you: `scripts/build.py` stamps every build with a new version, so after you rebuild and publish, people pick up the new version the next time they open the app and the old cached copy is deleted. It does nothing when the page is opened as a plain file or inside a preview.
-
-## Haptics
-
-Small vibrations answer your touches: a soft pulse when you log a save, a firmer one when a press-and-hold opens the details, ticks as you slide the amount bar, a double pulse when something is saved, and a longer pattern when a goal blooms. They use the vibration API where it exists (most Android phones) and a hidden switch control on iPhones with Safari 17.4 or newer. Where a device has neither, a soft ring opens where you touched instead. On the goals page, **Haptics: on/off** turns them on or off and **Test** sends a clear test pattern and tells you what your device supports.
 
 ## Accessibility
 

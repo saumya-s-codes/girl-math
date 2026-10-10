@@ -1,7 +1,7 @@
 /* Not Today, Babe — offline support.
    The version below is stamped in by scripts/build.py (a fingerprint of index.html), so every change to the app
    produces a new cache, and the old one is cleared out as soon as the new one takes over. */
-const VERSION='63474fadfc';
+const VERSION='17c5f9f667';
 const SHELL='ntb-shell-'+VERSION;
 const FONTS='ntb-fonts-v1';
 const FILES=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png','./icons/favicon-64.png'];

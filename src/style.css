@@ -433,9 +433,7 @@ button.wcol{background:none;padding:0;font:inherit;color:inherit;cursor:pointer;
 .bcard .bline{color:#6B7F58}
 .bspk{color:#E9B95A}
 
-/* the visible stand-in for a vibration */
-.hring{position:fixed;z-index:95;width:34px;height:34px;border:2.5px solid rgba(111,122,85,.6);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%) scale(.35);opacity:.9;animation:hring .55s ease-out forwards}
-@keyframes hring{to{transform:translate(-50%,-50%) scale(2.7);opacity:0}}
-.hlinks{margin-top:-2px;gap:14px}
-.hlinks .textlink{font-size:14px}
-@media (prefers-reduced-motion:reduce){.hring{animation:none;opacity:0}}
+
+
+/* ready: held long enough, let go to open */
+.tile.ready .blob{box-shadow:0 0 0 8px rgba(111,122,85,.32);transform:scale(1.07);transition:transform .15s var(--ease),box-shadow .15s var(--ease)}
