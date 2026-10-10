@@ -67,6 +67,19 @@ python3 scripts/build.py
 
 Sprites in `art.json` are looked up by name, for example `fl_pink_full`, `bf_purple_lw`, `pet0`, `spk1`. Keep the names, replace the images and their anchor points (`ax, ay` = base of the stem, `hx, hy` = centre of the head), then adjust `LAYOUT` in `src/progress.js` if sizes changed.
 
+## Data safety
+
+Your goals and saves live in the phone's own browser storage, under the name `not-today-babe-v3` (the `KEY` in `src/app.js`).
+
+- **Never rename that key.** A new name looks like an empty app, so your data would seem to be gone (it would still be there under the old name). If a rename is ever really needed, copy the old data to the new name first and keep the old copy.
+- **Two copies.** Every save also writes a second copy under `not-today-babe-backup`. If the main copy is missing or damaged, the app restores from the backup and says so.
+- **Nothing unreadable is overwritten.** If a stored copy can't be read, the app sets it aside under a `not-today-babe-rescue-…` name before saving anything new.
+- Publishing a new version (uploading the `docs` folder) never touches data stored on a phone, as long as the web address stays the same.
+
+## Version
+
+The version shown in **Settings** (the gear on the Goals screen) comes from the `VERSION` file at the top of the project. This build is **3.0**. To release a new number, edit that file (for example `3.1`) and run `python3 scripts/build.py`.
+
 ## Offline
 
 The app registers a small service worker (`src/sw.js`, built into `docs/sw.js`) the first time it is opened from a real web address such as GitHub Pages. After that it opens instantly and works with no connection, and the font is kept too. Nothing is needed from you: `scripts/build.py` stamps every build with a new version, so after you rebuild and publish, people pick up the new version the next time they open the app and the old cached copy is deleted. It does nothing when the page is opened as a plain file or inside a preview.

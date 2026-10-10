@@ -5,7 +5,7 @@
   --serif:'Cormorant Garamond','Georgia','Times New Roman',serif;
   --ease:cubic-bezier(.45,0,.25,1);
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+*{touch-action:manipulation;box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{background:var(--beige);color-scheme:light}
 /* 1px taller than the screen so the page always has a little scroll, which is what lets it rubber-band */
 body{min-height:calc(100vh + 1px);min-height:calc(100dvh + 1px);font-family:var(--serif);font-weight:600;font-size:17px;color:var(--ink);background:var(--beige)}
@@ -437,3 +437,18 @@ button.wcol{background:none;padding:0;font:inherit;color:inherit;cursor:pointer;
 
 /* ready: held long enough, let go to open */
 .tile.ready .blob{box-shadow:0 0 0 8px rgba(111,122,85,.32);transform:scale(1.07);transition:transform .15s var(--ease),box-shadow .15s var(--ease)}
+
+/* easier to hit when clearing several in a row, without making the rows taller */
+.item .x{width:40px;height:40px;margin:-6px -8px -6px 0}
+
+/* Settings */
+.scard{text-align:left;align-items:stretch;gap:6px}
+.scard .mtitle{text-align:center;margin-bottom:6px}
+.srow{display:flex;justify-content:space-between;align-items:center;font-size:20px;padding:12px 6px;color:var(--soft);font-weight:500}
+.srow b{color:var(--ink);font-size:22px}
+.scard .btn{margin-top:8px}
+.wtop #opensettings{position:absolute;top:0;right:142px;margin:0;z-index:2;width:44px;height:44px;font-size:22px;box-shadow:0 3px 10px rgba(150,100,70,.12)}
+
+/* bars are positioned against their own track, so a new height is always picked up (iPhone Safari included) */
+.wtrack{position:relative;display:block}
+.wcol .wbar{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:26px}

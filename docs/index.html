@@ -23,7 +23,7 @@
   --serif:'Cormorant Garamond','Georgia','Times New Roman',serif;
   --ease:cubic-bezier(.45,0,.25,1);
 }
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+*{touch-action:manipulation;box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html{background:var(--beige);color-scheme:light}
 /* 1px taller than the screen so the page always has a little scroll, which is what lets it rubber-band */
 body{min-height:calc(100vh + 1px);min-height:calc(100dvh + 1px);font-family:var(--serif);font-weight:600;font-size:17px;color:var(--ink);background:var(--beige)}
@@ -455,6 +455,21 @@ button.wcol{background:none;padding:0;font:inherit;color:inherit;cursor:pointer;
 
 /* ready: held long enough, let go to open */
 .tile.ready .blob{box-shadow:0 0 0 8px rgba(111,122,85,.32);transform:scale(1.07);transition:transform .15s var(--ease),box-shadow .15s var(--ease)}
+
+/* easier to hit when clearing several in a row, without making the rows taller */
+.item .x{width:40px;height:40px;margin:-6px -8px -6px 0}
+
+/* Settings */
+.scard{text-align:left;align-items:stretch;gap:6px}
+.scard .mtitle{text-align:center;margin-bottom:6px}
+.srow{display:flex;justify-content:space-between;align-items:center;font-size:20px;padding:12px 6px;color:var(--soft);font-weight:500}
+.srow b{color:var(--ink);font-size:22px}
+.scard .btn{margin-top:8px}
+.wtop #opensettings{position:absolute;top:0;right:142px;margin:0;z-index:2;width:44px;height:44px;font-size:22px;box-shadow:0 3px 10px rgba(150,100,70,.12)}
+
+/* bars are positioned against their own track, so a new height is always picked up (iPhone Safari included) */
+.wtrack{position:relative;display:block}
+.wcol .wbar{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:26px}
 
 </style>
 </head>
@@ -1599,7 +1614,14 @@ const syncTiles=()=>{TILES=[...state.tiles,OTHER]};
 const niceMax=p=>Math.max(p<=8?40:p<=15?60:p<=25?100:p<=40?160:200,Math.ceil(p*2/4)*4);
 const WISH_EMOJIS=['💻','👜','👟','💄','✈️','💍','🎧','👗','🌸','📱','📷','🎮','🏠','🚗','🎁','🧳','📚','🛋️','⌚','🎟️','🏖️','🐶','🚲','🎸','🎨','🧴','💎','👠','🖥️','⌨️','📺','🎬','🎤','🎹','🥁','🎻','📖','✏️','🧶','🧵','👛','🧣','🧢','👒','👓','🕶️','🩰','👙','🧥','🧦','💅','💆','🛁','🪞','🏋️','🧘','⛷️','🏄','🏕️','🗼','🗽','🏝️','🚢','🚂','🛵','🏍️','🍽️','☕','🍷','🎂','🍰','🌷','🌹','🪴','🛏️','🪑','💡','🧺','🐱','🐰','🦋','🎓','💼','🔑','💰','🎄','🎈','🎀'];
 const ALL_EMOJIS=[...new Set([...WISH_EMOJIS,...OTHER_EMOJIS])];
+/* ===== DATA SAFETY: read this before changing anything here =====
+   Your goals and saves are kept under the name KEY. NEVER rename KEY. A new name looks like an empty app and
+   your data would seem to vanish (it would still be there, under the old name). If a rename is ever truly needed,
+   copy the old data to the new name first, keep the old copy, and add the old name to the fallbacks in load().
+   Every save also writes a second copy under BACKUP_KEY, and load() falls back to it if the main copy is missing
+   or damaged. Anything unreadable is set aside under a 'rescue' name instead of being overwritten. */
 const KEY='not-today-babe-v3';
+const BACKUP_KEY='not-today-babe-backup';
 let state={skips:[],wish:null,claimed:[],tiles:DEFAULT_TILES.map(t=>({...t}))};
 let pickRow=-1;
 syncTiles();
@@ -1624,11 +1646,35 @@ function cleanSamples(){
   if(state.wish&&state.sampleStart!=null)state.wish.start=state.sampleStart;
   state.sampleStart=null;
 }
-async function load(){
-  try{const raw=await Store.get(KEY);if(raw){const s=JSON.parse(raw);state.skips=s.skips||[];state.wish=s.wish||null;state.claimed=s.claimed||[];if(Array.isArray(s.tiles)&&s.tiles.length===5)state.tiles=s.tiles;state.hinted=!!s.hinted;state.visited=!!s.visited;cleanSamples();return}}catch(e){}
-  try{const raw=await Store.get('not-today-babe-v2');if(raw){const s=JSON.parse(raw);state.skips=s.skips||[];state.wish=s.wish||null;state.claimed=s.claimed||[]}}catch(e){}
+let restoredNote=null;
+async function readCopy(k){
+  const raw=await Store.get(k);
+  if(!raw)return null;
+  try{const s=JSON.parse(raw);if(s&&typeof s==='object')return s}catch(e){}
+  /* there is something there, but it can't be read: set it aside so it is never lost */
+  try{
+    const rk='not-today-babe-rescue-'+k;
+    if(!localStorage.getItem(rk))localStorage.setItem(rk,raw);
+  }catch(e){}
+  return null;
 }
-async function save(){if(!(await Store.set(KEY,JSON.stringify(state))))memoryOnly=true}
+async function load(){
+  let s=await readCopy(KEY),fromBackup=false;
+  if(!s){s=await readCopy(BACKUP_KEY);fromBackup=!!s}
+  if(!s)s=await readCopy('not-today-babe-v2');                 /* the earliest format */
+  if(!s)return;
+  state.skips=s.skips||[];state.wish=s.wish||null;state.claimed=s.claimed||[];
+  if(Array.isArray(s.tiles)&&s.tiles.length===5)state.tiles=s.tiles;
+  state.hinted=!!s.hinted;state.visited=!!s.visited;
+  cleanSamples();
+  if(fromBackup){restoredNote='Restored your data from the backup copy.';save()}
+}
+async function save(){
+  const json=JSON.stringify(state);
+  const ok=await Store.set(KEY,json);
+  if(ok)await Store.set(BACKUP_KEY,json);                      /* the second copy, under a different name */
+  if(!ok)memoryOnly=true;
+}
 
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1660,7 +1706,7 @@ function goalHTML(){
     <div class="hrow wtop"><div class="wtext">
       <div class="wbrand">Not Today, Babe ♡</div>
       <h1>Little things<br>lead to big blooms</h1>
-    </div><button class="todaylink" id="totracker">My tracker ›</button></div>
+    </div><button class="homebtn" id="opensettings" aria-label="Settings">⚙️</button><button class="todaylink" id="totracker">My tracker ›</button></div>
     ${goalForm()}
     <div class="gpanel" id="gpanel" hidden><div class="tag" style="margin-bottom:8px">Pick an icon</div><div class="gpgrid">${WISH_EMOJIS.map(e=>`<button type="button" data-gemo="${e}" aria-label="Use ${e}">${e}</button>`).join('')}</div></div>
   </div>`;
@@ -1802,12 +1848,73 @@ function claimedHTML(){
         ${c.url?`<a class="glink" href="${esc(c.url)}" data-openlink="${esc(c.url)}" target="_blank" rel="noopener noreferrer">View item ↗</a>`:''}</div>
       <button class="x" data-delclaim="${i}" aria-label="Remove ${esc(c.name)} from claimed">✕</button></div>`}).join('');
 }
+function weekCols(days,max){
+  return days.map((d,i)=>`<button class="wcol ${d.today?'t':''} ${i===0?'first':''} ${i===6?'last':''}" data-wday="${i}" aria-label="${d.name}: ${money(d.total)}, ${d.count} save${d.count===1?'':'s'}"><div class="wtip" hidden><b>${money(d.total)}</b> <small>${d.name} · ${d.count} save${d.count===1?'':'s'}</small></div><div class="wtrack"><div class="wbar" style="height:${Math.max(4,Math.round(d.total/max*100))}%"></div></div><span class="wlabel">${d.label}</span></button>`).join('');
+}
+function bindWeek(){
+  document.querySelectorAll('[data-wday]').forEach(col=>col.onclick=()=>{
+    const on=!col.classList.contains('sel');
+    document.querySelectorAll('.wcol').forEach(c=>{c.classList.remove('sel');c.querySelector('.wtip').hidden=true});
+    if(on){col.classList.add('sel');col.querySelector('.wtip').hidden=false}
+  });
+}
+let weekFix=null;
+function weekDays(){
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);const k=dayKey(d);
+    days.push({k,label:d.toLocaleDateString(undefined,{weekday:'narrow'}),name:i===0?'Today':d.toLocaleDateString(undefined,{weekday:'short'}),
+      count:state.skips.filter(s=>dayKey(s.ts)===k).length,total:sum(state.skips.filter(s=>dayKey(s.ts)===k)),today:i===0});
+  }
+  return days;
+}
+/* Removing a save only changes a few things on the screen, so change just those: the list keeps its place
+   and the bars glide to their new height instead of the whole screen being redrawn. */
+function patchWeek(){
+  const days=weekDays(),max=Math.max(1,...days.map(d=>d.total));
+  const total=days.reduce((t,d)=>t+d.total,0),count=days.reduce((t,d)=>t+d.count,0);
+  const wh=document.querySelector('.weekhead');
+  if(wh){const b=wh.querySelector('b'),sp=wh.querySelectorAll('span');if(b)b.textContent=money(total);if(sp[1])sp[1].textContent=`· ${count} save${count===1?'':'s'}`}
+  document.querySelectorAll('.wcol').forEach((col,i)=>{
+    const d=days[i];if(!d)return;
+    col.setAttribute('aria-label',`${d.name}: ${money(d.total)}, ${d.count} save${d.count===1?'':'s'}`);
+    const bar=col.querySelector('.wbar');
+    if(bar){
+      const now=bar.getBoundingClientRect().height;          /* start from exactly where the bar is... */
+      bar.style.height=now+'px';void bar.offsetHeight;        /* ...make the browser notice... */
+      bar.style.height=Math.max(4,Math.round(d.total/max*100))+'%';   /* ...then glide to the new height */
+    }
+    const tip=col.querySelector('.wtip');if(tip)tip.innerHTML=`<b>${money(d.total)}</b> <small>${d.name} · ${d.count} save${d.count===1?'':'s'}</small>`;
+  });
+  /* once the glide is over, redraw the chart cleanly from the data, so it is always exactly right on any browser */
+  clearTimeout(weekFix);
+  weekFix=setTimeout(()=>{
+    const w=document.querySelector('.week');if(!w||view!=='log')return;
+    const sel=[...w.querySelectorAll('.wcol')].findIndex(c=>c.classList.contains('sel'));
+    const dd=weekDays(),mx=Math.max(1,...dd.map(d=>d.total));
+    w.innerHTML=weekCols(dd,mx);bindWeek();
+    if(sel>=0){const c=w.querySelectorAll('.wcol')[sel];if(c){c.classList.add('sel');c.querySelector('.wtip').hidden=false}}
+  },800);
+}
+function removeSave(id){
+  const s=state.skips.find(x=>x.id===id);if(!s)return;
+  state.skips=state.skips.filter(x=>x.id!==id);save();
+  const btn=document.querySelector(`[data-del="${id}"]`),row=btn&&btn.closest('.item');
+  if(!row||view!=='log'||logTab!=='saves'){render();return}
+  let head=row.previousElementSibling;while(head&&!head.classList.contains('dayhead'))head=head.previousElementSibling;
+  row.remove();
+  const left=state.skips.filter(x=>dayKey(x.ts)===dayKey(s.ts));
+  if(head){if(!left.length)head.remove();else head.lastElementChild.textContent=money(sum(left))}
+  patchWeek();
+  const log=document.querySelector('.log');
+  if(log&&!log.querySelector('.item'))log.innerHTML='<div class="empty">Nothing yet.<br>Walk past the coffee shop and come back. ☕</div>';
+}
 function logHTML(){
   const all=state.skips.slice().sort((a,b)=>b.ts-a.ts);
   const groups=[];
   all.forEach(s=>{const k=dayKey(s.ts);let g=groups[groups.length-1];if(!g||g.k!==k){g={k,ts:s.ts,items:[]};groups.push(g)}g.items.push(s)});
   /* last seven days as soft bars */
-  const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=dayKey(d);days.push({k,label:d.toLocaleDateString(undefined,{weekday:'narrow'}),name:i===0?'Today':d.toLocaleDateString(undefined,{weekday:'short'}),count:state.skips.filter(s=>dayKey(s.ts)===k).length,total:sum(state.skips.filter(s=>dayKey(s.ts)===k)),today:i===0})}
+  const days=weekDays();
   const max=Math.max(1,...days.map(d=>d.total)),weekTotal=sum(days.map(d=>({amount:d.total})));
   const weekCount=state.skips.filter(s=>days.some(d=>d.k===dayKey(s.ts))).length;
   return `<div class="screen">
@@ -1815,7 +1922,7 @@ function logHTML(){
     <div class="tabs" role="tablist"><button role="tab" data-tab="saves" class="${logTab==='saves'?'on':''}">Saves</button><button role="tab" data-tab="claimed" class="${logTab==='claimed'?'on':''}">Claimed${(state.claimed||[]).length?' · '+state.claimed.length:''}</button></div>
     ${logTab==='claimed'?`<div class="log">${claimedHTML()}</div>`:`<button class="addpast" id="addpast">＋ Add a past save</button>
     <div class="weekhead"><span>This week</span><b>${money(weekTotal)}</b><span>· ${weekCount} save${weekCount===1?'':'s'}</span><i class="whint">tap a bar</i></div>
-    <div class="week" role="group" aria-label="Saves over the last seven days">${days.map((d,i)=>`<button class="wcol ${d.today?'t':''} ${i===0?'first':''} ${i===6?'last':''}" data-wday="${i}" aria-label="${d.name}: ${money(d.total)}, ${d.count} save${d.count===1?'':'s'}"><div class="wtip" hidden><b>${money(d.total)}</b> <small>${d.name} · ${d.count} save${d.count===1?'':'s'}</small></div><div class="wtrack"><div class="wbar" style="height:${Math.max(4,Math.round(d.total/max*100))}%"></div></div><span class="wlabel">${d.label}</span></button>`).join('')}</div>
+    <div class="week" role="group" aria-label="Saves over the last seven days">${weekCols(days,max)}</div>
     <div class="log">${groups.length?groups.map(g=>`
       <div class="dayhead"><span>${dayLabel(g.ts)}</span><span>${money(sum(g.items))}</span></div>
       ${g.items.map(s=>`<div class="item"><span>${s.emoji}</span><span class="l">${esc(s.label)}${s.note?`<small>${esc(s.note)}</small>`:''}</span><span class="a">${money(s.amount)}</span>
@@ -1886,6 +1993,24 @@ function render(){
 }
 function nav(v){returnView='home';go(v)}
 function go(v){if(saving)return;view=v;render()}
+
+const APP_VERSION='3.0';
+
+/* ---------- Settings: a small sheet, with the version ---------- */
+function openSettings(){
+  if($('#settings'))return;
+  const m=document.createElement('div');m.id='settings';m.className='modal';
+  m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');m.setAttribute('aria-label','Settings');
+  m.innerHTML=`<div class="mcard scard"><div class="mtitle">Settings</div>
+    <div class="srow"><span>Version</span><b id="appver">${APP_VERSION}</b></div>
+    <button class="btn" id="sdone">Done</button></div>`;
+  document.body.appendChild(m);
+  const close=()=>{document.removeEventListener('keydown',esc);m.classList.add('out');setTimeout(()=>m.remove(),180)};
+  const esc=e=>{if(e.key==='Escape')close()};
+  document.addEventListener('keydown',esc);
+  m.onclick=e=>{if(e.target===m)close()};
+  $('#sdone').onclick=close;$('#sdone').focus();
+}
 
 /* ---------- nothing to log toward yet: ask for a goal first ---------- */
 function goalPrompt(){
@@ -2070,14 +2195,11 @@ function bind(){
     bindChip();
   }
   if($('#totracker'))$('#totracker').onclick=()=>go('home');
+  if($('#opensettings'))$('#opensettings').onclick=openSettings;
   if($('#newgoal'))$('#newgoal').onclick=()=>{draftEmoji=null;nav('goal')};
   if($('#backtrk'))$('#backtrk').onclick=()=>go('home');
   if($('#openlog'))$('#openlog').onclick=()=>{logTab='saves';nav('log')};
-  document.querySelectorAll('[data-wday]').forEach(col=>col.onclick=()=>{
-    const on=!col.classList.contains('sel');
-    document.querySelectorAll('.wcol').forEach(c=>{c.classList.remove('sel');c.querySelector('.wtip').hidden=true});
-    if(on){col.classList.add('sel');col.querySelector('.wtip').hidden=false}
-  });
+  bindWeek();
   document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{logTab=b.dataset.tab;render()});
   document.querySelectorAll('[data-openlink]').forEach(l=>l.onclick=e=>{e.preventDefault();openLink(l.dataset.openlink)});
   document.querySelectorAll('[data-delclaim]').forEach(b=>b.onclick=()=>{if(!confirm('Remove this from your claimed list?'))return;state.claimed.splice(+b.dataset.delclaim,1);save();render()});
@@ -2199,7 +2321,7 @@ function bind(){
     if(first)shown=null;
     save();view='home';render();toast(first?'Planted. Let’s grow it.':'Goal updated.');
   };
-  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{state.skips=state.skips.filter(s=>s.id!==b.dataset.del);save();render()});
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>removeSave(b.dataset.del));
   if($('#reset'))$('#reset').onclick=()=>{
     if(!confirm('Wipe everything and start fresh?'))return;
     state={skips:[],wish:null,claimed:[],tiles:state.tiles,hinted:true};shown=null;save();render();
@@ -2214,6 +2336,7 @@ function bind(){
   state.visited=true;save();
   view=first?'goal':'home';
   render();
+  if(restoredNote)setTimeout(()=>toast(restoredNote,4500),900);
 })();
 
 /* A small, honest message if anything unexpected happens, so the cause can be reported. */
