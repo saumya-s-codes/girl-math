@@ -1,4 +1,4 @@
-# Not Today, Babe
+# Someday
 
 A small, calm savings tracker. Every time you skip a coffee, a drink or an add-to-cart, you log it as a save and a bouquet grows toward something you really want.
 
@@ -69,12 +69,20 @@ Sprites in `art.json` are looked up by name, for example `fl_pink_full`, `bf_pur
 
 ## Data safety
 
-Your goals and saves live in the phone's own browser storage, under the name `not-today-babe-v3` (the `KEY` in `src/app.js`).
+Your goals and saves live in the phone's own browser storage, under the name `not-today-babe-v3` (the app used to be called *Not Today, Babe*; the stored names keep that old prefix on purpose, because renaming them would make existing data look gone) (the `KEY` in `src/app.js`).
 
 - **Never rename that key.** A new name looks like an empty app, so your data would seem to be gone (it would still be there under the old name). If a rename is ever really needed, copy the old data to the new name first and keep the old copy.
 - **Two copies.** Every save also writes a second copy under `not-today-babe-backup`. If the main copy is missing or damaged, the app restores from the backup and says so.
 - **Nothing unreadable is overwritten.** If a stored copy can't be read, the app sets it aside under a `not-today-babe-rescue-…` name before saving anything new.
 - Publishing a new version (uploading the `docs` folder) never touches data stored on a phone, as long as the web address stays the same.
+
+## Back up and restore
+
+**Settings** (the gear on the Goals screen) has **Back up to a file** and **Restore from a file**.
+
+- **Back up:** makes a small `.json` file with your goal, saves, claimed items and button names. On a phone it opens the share sheet, so choose *Save to Files*, AirDrop or email. On a computer it downloads. It shows the date of your last backup.
+- **Restore:** pick a backup file. The app checks the file really is a backup, asks before replacing anything, and keeps what was on the phone aside (`not-today-babe-rescue-before-restore`) in case you change your mind.
+- A new phone? Open the app, tap the gear on the first screen, and restore your file.
 
 ## Version
 

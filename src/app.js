@@ -18,6 +18,8 @@ const niceMax=p=>Math.max(p<=8?40:p<=15?60:p<=25?100:p<=40?160:200,Math.ceil(p*2
 const WISH_EMOJIS=['💻','👜','👟','💄','✈️','💍','🎧','👗','🌸','📱','📷','🎮','🏠','🚗','🎁','🧳','📚','🛋️','⌚','🎟️','🏖️','🐶','🚲','🎸','🎨','🧴','💎','👠','🖥️','⌨️','📺','🎬','🎤','🎹','🥁','🎻','📖','✏️','🧶','🧵','👛','🧣','🧢','👒','👓','🕶️','🩰','👙','🧥','🧦','💅','💆','🛁','🪞','🏋️','🧘','⛷️','🏄','🏕️','🗼','🗽','🏝️','🚢','🚂','🛵','🏍️','🍽️','☕','🍷','🎂','🍰','🌷','🌹','🪴','🛏️','🪑','💡','🧺','🐱','🐰','🦋','🎓','💼','🔑','💰','🎄','🎈','🎀'];
 const ALL_EMOJIS=[...new Set([...WISH_EMOJIS,...OTHER_EMOJIS])];
 /* ===== DATA SAFETY: read this before changing anything here =====
+   (The app is now called Someday, but these stored names still begin with 'not-today-babe' ON PURPOSE.
+   They are internal. Renaming them would make existing data look gone.)
    Your goals and saves are kept under the name KEY. NEVER rename KEY. A new name looks like an empty app and
    your data would seem to vanish (it would still be there, under the old name). If a rename is ever truly needed,
    copy the old data to the new name first, keep the old copy, and add the old name to the fallbacks in load().
@@ -68,7 +70,7 @@ async function load(){
   if(!s)return;
   state.skips=s.skips||[];state.wish=s.wish||null;state.claimed=s.claimed||[];
   if(Array.isArray(s.tiles)&&s.tiles.length===5)state.tiles=s.tiles;
-  state.hinted=!!s.hinted;state.visited=!!s.visited;
+  state.hinted=!!s.hinted;state.visited=!!s.visited;state.lastBackup=s.lastBackup||null;
   cleanSamples();
   if(fromBackup){restoredNote='Restored your data from the backup copy.';save()}
 }
@@ -107,7 +109,7 @@ function goalHTML(){
   return `<div class="screen welcome">
     <div class="garden" id="garden" aria-hidden="true"></div><div class="gfx" id="gfx" aria-hidden="true"></div>
     <div class="hrow wtop"><div class="wtext">
-      <div class="wbrand">Not Today, Babe ♡</div>
+      <div class="wbrand">Someday ♡</div>
       <h1>Little things<br>lead to big blooms</h1>
     </div><button class="homebtn" id="opensettings" aria-label="Settings">⚙️</button><button class="todaylink" id="totracker">My tracker ›</button></div>
     ${goalForm()}
@@ -399,20 +401,83 @@ function go(v){if(saving)return;view=v;render()}
 
 const APP_VERSION='{{APP_VERSION}}';
 
-/* ---------- Settings: a small sheet, with the version ---------- */
+/* ---------- Back up and restore: your data as a file you can keep ---------- */
+async function exportBackup(){
+  const payload={app:'not-today-babe',format:1,version:APP_VERSION,exportedAt:new Date().toISOString(),data:state};
+  const json=JSON.stringify(payload,null,2),name=`someday-backup-${isoDay(0)}.json`;
+  let file=null;try{file=new File([json],name,{type:'application/json'})}catch(e){}
+  const done=how=>{state.lastBackup=Date.now();save();return how};
+  /* 1) the share sheet (phones): "Save to Files", AirDrop, email... */
+  try{
+    if(file&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'Someday backup'});return done('shared')}
+  }catch(e){if(e&&e.name==='AbortError')return 'cancelled'}
+  /* 2) a normal download */
+  try{
+    const url=URL.createObjectURL(file||new Blob([json],{type:'application/json'}));
+    const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);return done('downloaded');
+  }catch(e){}
+  /* 3) last resort: copy the text */
+  try{await navigator.clipboard.writeText(json);return done('copied')}catch(e){}
+  return 'failed';
+}
+function validateBackup(obj){
+  const d=obj&&(obj.app==='not-today-babe'||obj.app==='someday')&&obj.data?obj.data:(obj&&Array.isArray(obj.skips)?obj:null);
+  if(!d||!Array.isArray(d.skips))return null;
+  if(!d.skips.every(x=>x&&x.id!==undefined&&isFinite(+x.amount)&&isFinite(+x.ts)))return null;
+  if(d.wish&&(typeof d.wish.name!=='string'||!(+d.wish.price>0)))return null;
+  if(d.claimed&&!Array.isArray(d.claimed))return null;
+  return d;
+}
+async function importBackup(file){
+  let obj;try{obj=JSON.parse(await file.text())}catch(e){return{ok:false,msg:'That file isn’t a Someday backup.'}}
+  const d=validateBackup(obj);
+  if(!d)return{ok:false,msg:'That file isn’t a Someday backup.'};
+  const what=`${d.skips.length} save${d.skips.length===1?'':'s'}${d.wish?` and the goal “${d.wish.name}”`:''}`;
+  const hasNow=state.skips.length||state.wish||(state.claimed||[]).length;
+  if(hasNow&&!confirm(`Replace what’s on this phone with the backup (${what})? What’s here now is kept aside, just in case.`))return{ok:false,msg:'Nothing was changed.'};
+  try{localStorage.setItem('not-today-babe-rescue-before-restore',JSON.stringify(state))}catch(e){}
+  state.skips=d.skips;state.wish=d.wish||null;state.claimed=d.claimed||[];
+  if(Array.isArray(d.tiles)&&d.tiles.length===5)state.tiles=d.tiles;
+  state.hinted=true;state.visited=true;state.lastBackup=d.lastBackup||state.lastBackup||null;
+  syncTiles();await save();
+  return{ok:true,msg:`Restored ${what}.`};
+}
+
+/* ---------- Settings: the version, and your data ---------- */
 function openSettings(){
   if($('#settings'))return;
   const m=document.createElement('div');m.id='settings';m.className='modal';
   m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');m.setAttribute('aria-label','Settings');
+  const lastTxt=()=>state.lastBackup?'Last backup: '+new Date(state.lastBackup).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'No backup yet';
   m.innerHTML=`<div class="mcard scard"><div class="mtitle">Settings</div>
     <div class="srow"><span>Version</span><b id="appver">${APP_VERSION}</b></div>
+    <div class="ssub">Your data</div>
+    <button class="btn outline" id="sbackup">Back up to a file</button>
+    <button class="btn outline" id="srestore">Restore from a file</button>
+    <div class="snote" id="slast">${lastTxt()}</div>
     <button class="btn" id="sdone">Done</button></div>`;
   document.body.appendChild(m);
   const close=()=>{document.removeEventListener('keydown',esc);m.classList.add('out');setTimeout(()=>m.remove(),180)};
   const esc=e=>{if(e.key==='Escape')close()};
   document.addEventListener('keydown',esc);
   m.onclick=e=>{if(e.target===m)close()};
-  $('#sdone').onclick=close;$('#sdone').focus();
+  $('#sdone').onclick=close;
+  $('#sbackup').onclick=async()=>{
+    const how=await exportBackup();
+    $('#slast')&&($('#slast').textContent=lastTxt());
+    toast({shared:'Choose “Save to Files” (or AirDrop or email) to keep it.',downloaded:'Backup saved to your downloads.',copied:'Backup copied. Paste it into a note to keep it.',cancelled:'Backup cancelled.',failed:'Couldn’t make a backup here.'}[how],4600);
+  };
+  $('#srestore').onclick=()=>{
+    const inp=document.createElement('input');inp.type='file';inp.accept='application/json,.json';
+    inp.onchange=async()=>{
+      const f=inp.files&&inp.files[0];if(!f)return;
+      const r=await importBackup(f);
+      if(r.ok){close();shown=null;draftEmoji=state.wish?state.wish.emoji:null;view=state.wish?'home':'goal';render()}
+      toast(r.msg,4600);
+    };
+    inp.click();
+  };
 }
 
 /* ---------- nothing to log toward yet: ask for a goal first ---------- */

@@ -1,4 +1,4 @@
-/* Not Today, Babe — offline support.
+/* Someday — offline support.
    The version below is stamped in by scripts/build.py (a fingerprint of index.html), so every change to the app
    produces a new cache, and the old one is cleared out as soon as the new one takes over. */
 const VERSION='{{VERSION}}';
