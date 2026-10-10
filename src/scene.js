@@ -118,18 +118,83 @@ class Bouquet extends Botanical{
   destroy(){this.items.forEach(i=>{i.tw&&i.tw.cancel();i.comp.destroy()});super.destroy()}
 }
 
+/* ---------- Seed: a small seed floating in the water, with the first sprout ---------- */
+class Seed{
+  constructor(parent,surfaceY){
+    this.g=svgEl('g',{transform:`translate(203 ${(surfaceY+2).toFixed(1)})`,'pointer-events':'none'},parent);
+    const id=uid(),defs=svgEl('defs',null,this.g);
+    const gb=svgEl('linearGradient',{id:'sb'+id,x1:0,y1:0,x2:1,y2:1},defs);
+    svgEl('stop',{offset:0,'stop-color':'#B58B5F'},gb);svgEl('stop',{offset:.55,'stop-color':'#845A37'},gb);svgEl('stop',{offset:1,'stop-color':'#54381F'},gb);
+    const gl=svgEl('linearGradient',{id:'sl'+id,x1:0,y1:1,x2:0,y2:0},defs);
+    svgEl('stop',{offset:0,'stop-color':'#7FA06A'},gl);svgEl('stop',{offset:1,'stop-color':'#BCD092'},gl);
+    /* rings spreading out across the water */
+    this.rip=[0,1,2].map(()=>svgEl('ellipse',{cx:0,cy:1,rx:18,ry:3.5,fill:'none',stroke:'#FFFFFF','stroke-width':1.3,opacity:0},this.g));
+    svgEl('ellipse',{cx:1,cy:5,rx:15,ry:3.2,fill:'#6E8FA3',opacity:.22},this.g);        /* its soft shadow in the water */
+    this.bob=svgEl('g',null,this.g);
+    this.sprout=svgEl('g',{transform:'translate(7 -6)'},this.bob);
+    svgEl('path',{d:'M0 0 C0.5 -8 -0.5 -14 1 -20',stroke:'#7E9A63','stroke-width':1.8,fill:'none','stroke-linecap':'round'},this.sprout);
+    svgEl('path',{d:'M1 -19 C-3 -24.5 -11 -24.5 -13 -20 C-9 -15.5 -3 -15.5 1 -19Z',fill:`url(#sl${id})`},this.sprout);
+    svgEl('path',{d:'M1 -19 C5 -26 13 -27 15 -22.5 C11 -17 5 -15.5 1 -19Z',fill:`url(#sl${id})`},this.sprout);
+    const sd=svgEl('g',{transform:'rotate(-14)'},this.bob);
+    svgEl('path',{d:'M-13 1 C-13 -9 -3 -13 6 -11 C15 -9 15 1 9 5.5 C1 10 -13 9 -13 1Z',fill:`url(#sb${id})`},sd);
+    svgEl('path',{d:'M-7 -4.5 C-4 -8 2 -9 5.5 -8',stroke:'#EAD3B1','stroke-width':1.5,fill:'none','stroke-linecap':'round',opacity:.6},sd);
+    svgEl('path',{d:'M-10 3 C-2 6.5 5 5.5 10 1',stroke:'#35230F','stroke-width':.8,fill:'none',opacity:.4},sd);
+    /* little glints on and around the seed */
+    const star='M0 -5 L1.3 -1.3 L5 0 L1.3 1.3 L0 5 L-1.3 1.3 L-5 0 L-1.3 -1.3Z';
+    this.glints=[{x:-6,y:-8,s:1,per:2.9,ph:0},{x:13,y:-15,s:.8,per:3.4,ph:1.1},{x:-11,y:-27,s:.7,per:3.1,ph:2.0},{x:16,y:-1,s:.6,per:2.6,ph:.6},{x:2,y:-30,s:.55,per:3.7,ph:2.8}].map(o=>{
+      const g=svgEl('g',{transform:`translate(${o.x} ${o.y}) scale(0)`},this.g);
+      svgEl('path',{d:star,fill:'#FFF3CF'},g);svgEl('circle',{r:1.1,fill:'#F7C96B',opacity:.9},g);
+      return Object.assign(o,{g});
+    });
+    this.idle(0);
+  }
+  idle(t){
+    const s=t;                                  /* the shared clock counts in seconds */
+    this.glints.forEach(o=>{
+      const k=Math.max(0,Math.sin((s/o.per+o.ph)*6.2832));        /* up and down, with long rests in between */
+      const a=k*k*k,sc=.2+a*o.s;
+      o.g.setAttribute('transform',`translate(${o.x} ${o.y}) scale(${sc.toFixed(3)}) rotate(${(a*40).toFixed(1)})`);
+      o.g.setAttribute('opacity',Math.min(1,a*1.3).toFixed(3));
+    });
+    this.bob.setAttribute('transform',`translate(0 ${(Math.sin(s*1.1)*1.1).toFixed(2)}) rotate(${(Math.sin(s*.8)*1.2).toFixed(2)})`);
+    this.sprout.setAttribute('transform',`translate(7 -6) rotate(${(Math.sin(s*1.3+1)*3.5).toFixed(2)})`);
+    this.rip.forEach((r,i)=>{
+      const k=(s*.33+i/3)%1;
+      r.setAttribute('rx',(16+k*32).toFixed(1));r.setAttribute('ry',(3+k*6.5).toFixed(1));
+      r.setAttribute('opacity',(.55*(1-k)*Math.min(1,k/.08)).toFixed(3));
+    });
+  }
+  destroy(){this.g.remove()}
+}
+
 /* ---------- BotanicalScene: vase + water + bouquet + visitors ---------- */
 class BotanicalScene{
-  constructor(container,{progress=0,from=null,onSettled,sky=true}={}){
-    this.skyOn=sky;
+  constructor(container,{progress=0,from=null,onSettled,sky=true,seed=false}={}){
+    this.skyOn=sky;this.seedOn=seed;
     injectSpriteDefs();
     this.svg=svgEl('svg',{viewBox:'30 54 340 406',role:'img'});container.appendChild(this.svg);
     const defs=svgEl('defs',null,this.svg);
     const rg=svgEl('radialGradient',{id:'halo'},defs);svgEl('stop',{offset:0,'stop-color':'#F9D9C6','stop-opacity':.9},rg);svgEl('stop',{offset:1,'stop-color':'#F9D9C6','stop-opacity':0},rg);
     svgEl('circle',{cx:200,cy:250,r:150,fill:'url(#halo)',opacity:.5},this.svg);
+    if(seed){                                      /* no goal yet: a warm glow, and a faint ghost of the bouquet to come */
+      const gf=svgEl('filter',{id:'ghostblur',x:'-10%',y:'-10%',width:'120%',height:'120%'},defs);svgEl('feGaussianBlur',{stdDeviation:.9},gf);
+      const gg=svgEl('radialGradient',{id:'tableglow'},defs);svgEl('stop',{offset:0,'stop-color':'#F8D0AA','stop-opacity':.62},gg);svgEl('stop',{offset:.6,'stop-color':'#F8D6B8','stop-opacity':.22},gg);svgEl('stop',{offset:1,'stop-color':'#F8D6B8','stop-opacity':0},gg);
+      svgEl('ellipse',{cx:200,cy:452,rx:190,ry:62,fill:'url(#tableglow)'},this.svg);
+      svgEl('ellipse',{cx:200,cy:456,rx:132,ry:12,fill:'none',stroke:'#F3D6BC','stroke-width':1.2,opacity:.55},this.svg);
+      this.ghostG=svgEl('g',{opacity:.085,filter:'url(#ghostblur)','pointer-events':'none'},this.svg);
+      this.ghost=new Bouquet();this.ghost.mount(this.ghostG);this.ghost.snap(1);
+    }
+    {
+      const vid=uid();
+      const f1=svgEl('filter',{id:'vs1'+vid,x:'-30%',y:'-150%',width:'160%',height:'400%'},defs);svgEl('feGaussianBlur',{stdDeviation:5},f1);
+      const f2=svgEl('filter',{id:'vs2'+vid,x:'-30%',y:'-200%',width:'160%',height:'500%'},defs);svgEl('feGaussianBlur',{stdDeviation:2},f2);
+      svgEl('ellipse',{cx:210,cy:451,rx:88,ry:9.5,fill:'#5B4535',opacity:.2,filter:`url(#vs1${vid})`},this.svg);     /* the soft, wide shadow */
+      svgEl('ellipse',{cx:205,cy:448,rx:60,ry:4.4,fill:'#45301F',opacity:.3,filter:`url(#vs2${vid})`},this.svg);     /* a tighter one where the glass meets the table */
+    }
     this.vase=new Vase();this.water=new Water();this.bouquet=new Bouquet();
     this.vase.back&&this.svg.appendChild(this.vase.back);
     this.water.mount(this.svg);this.bouquet.mount(this.svg);
+    if(seed){this.seedLevel=LAYOUT.vase.waterMin+.13;this.water.setLevel(this.seedLevel);this.seed=new Seed(this.svg,this.water.y)}
     this.svg.appendChild(this.water.front);this.svg.appendChild(this.vase.front);
     this.floorG=svgEl('g',null,this.svg);this.petalG=svgEl('g',null,this.svg);
     this.sparkG=svgEl('g',null,this.svg);this.bfG=svgEl('g',null,this.svg);
@@ -140,6 +205,7 @@ class BotanicalScene{
     const start=from==null?progress:from;
     this._setNow(start);
     if(from!=null&&Math.abs(from-progress)>1e-4)this.setProgress(progress,{animate:true});
+    if(seed)this.water.setLevel(this.seedLevel);                /* keep the little extra water for the seed */
   }
   _after(ms,fn){const t=Motion.after(ms,()=>{this._timers.delete(t);fn()});this._timers.add(t);return t}
   /* build the state for progress p instantly (no animation, no events) */
@@ -153,7 +219,8 @@ class BotanicalScene{
   }
   _aria(){this.svg.setAttribute('aria-label',`A vase of flowers, ${Math.round(this.progress*100)} percent grown`)}
   _idle(t,dt){
-    this.bouquet.idle(t);this.water.idle(t);
+    this.bouquet.idle(t*1000);this.water.idle(t*1000);       /* their sway timings are in milliseconds */
+    if(this.seed&&!Motion.reduced())this.seed.idle(t);
     const m=PROGRESS.map(this.progress);
     if(Motion.reduced())return;
     /* a butterfly may pass by from time to time */
@@ -180,8 +247,16 @@ class BotanicalScene{
     }
     /* petals fall slowly from the top of the screen, a few at a time */
     this.skyCountdown=(this.skyCountdown??1.5)-dt;
-    if(this.skyOn&&this.skyCountdown<=0&&this.sky.size<2+Math.floor(this.progress*6)){
-      this.skyCountdown=(1.7-this.progress*.9)*(.7+Math.random()*.7);
+    if(this.seed){                                   /* a few soft sparkles, mostly inside the glass */
+      this.seedSpark=(this.seedSpark??1)-dt;
+      if(this.seedSpark<=0){
+        this.seedSpark=.9+Math.random()*1.2;const R=LAYOUT.roam,inGlass=Math.random()<.55;
+        this.sparkleAt(inGlass?140+Math.random()*120:R.x0+Math.random()*(R.x1-R.x0),inGlass?350+Math.random()*80:R.y0+Math.random()*(R.y1-R.y0),Math.random()*300);
+      }
+    }
+    const skyMax=this.seed?3:2+Math.floor(this.progress*6);
+    if(this.skyOn&&this.skyCountdown<=0&&this.sky.size<skyMax){
+      this.skyCountdown=(this.seed?2.2:(1.7-this.progress*.9))*(.7+Math.random()*.7);
       this.skyPetal();
     }
     /* petals are rare: at most 1-3 moving at once */
@@ -306,16 +381,17 @@ class BotanicalScene{
     this._timers.forEach(t=>t.cancel());
     this.sparks.forEach(s=>s.destroy());this.floor.forEach(p=>p.destroy());this.drifters.forEach(p=>p.destroy());this.sky.forEach(p=>p.destroy());
     this.rest.forEach(b=>b&&b.destroy());this.temps.forEach(b=>b.destroy());
+    this.seed&&this.seed.destroy();this.ghost&&this.ghost.destroy();
     this.bouquet.destroy();this.water.destroy();this.vase.destroy();this.svg.remove();
   }
 }
 
 /* ---------- <BotanicalProgress progress goal current /> ---------- */
 class BotanicalProgress{
-  constructor(container,{progress,goal,current,from=null,sky=true}={}){
+  constructor(container,{progress,goal,current,from=null,sky=true,seed=false}={}){
     this.goal=goal;this.current=current;
     const p=progress!=null?progress:(goal>0?current/goal:0);
-    this.scene=new BotanicalScene(container,{progress:Motion.clamp(p),from,sky});
+    this.scene=new BotanicalScene(container,{progress:Motion.clamp(p),from,sky,seed});
     this.progress=Motion.clamp(p);
   }
   update({progress,goal,current,animate=true,duration}={}){
@@ -337,7 +413,7 @@ class ExpenseFlower{
     this.svg.appendChild(this.water.front);this.svg.appendChild(this.vase.front);
     this.spark=new Sparkle({sprite:'spk0',x:212,y:130}).mount(this.svg);
     this.cur=this._q(amount);this.target=this.cur;this._apply(this.cur);
-    this.idleSub=Motion.sub((t)=>{this.bouquet.idle(t);this.water.idle(t)},{fps:30});
+    this.idleSub=Motion.sub((t)=>{this.bouquet.idle(t*1000);this.water.idle(t*1000)},{fps:30});
     this.stopWatch=Motion.watch(this.svg,this.idleSub);
     this.sm=null;
   }
@@ -425,7 +501,7 @@ class GardenScene{
   _after(ms,fn){const t=Motion.after(ms,()=>{this._timers.delete(t);fn()});this._timers.add(t);return t}
   _idle(t,dt){
     if(Motion.reduced())return;
-    for(const p of this.plants)this._paint(p,t);
+    for(const p of this.plants)this._paint(p,t*1000);
     this.sparkCountdown-=dt;
     if(this.sparkCountdown<=0){
       this.sparkCountdown=.1+Math.random()*.18;

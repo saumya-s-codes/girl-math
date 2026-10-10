@@ -18,7 +18,7 @@ It is a plain static site: HTML, CSS and vanilla JavaScript. No framework, no bu
 
 Three screens:
 
-- **Tracker** (opens by default after the first visit, with or without a goal; the very first time the app is opened it starts on **Goals**): the growing bouquet, the progress ruler and the save buttons. Tap a button to log it, press and hold for details. The "$… today" pill opens the Log, and the goal card opens Goals. With no goal set, the goal card is a translucent **Enter goal** button, and tapping any save button pops up "Add a goal to get started".
+- **Tracker** (opens by default after the first visit, with or without a goal; the very first time the app is opened it starts on **Goals**): the growing bouquet, the progress ruler and the save buttons. Tap a button to log it, press and hold for details. The "$… today" pill opens the Log, and the goal card opens Goals. With no goal set, the vase holds a small seed with a first sprout, a faint ghost of the bouquet to come glows behind it, petals drift past, and the line "Your garden starts with the first drop." sits above. The goal card is a dashed **Plant a goal** button, and tapping any save button pops up "Add a goal to get started".
 - **Log**: your history. A seven-day chart (tap a bar for that day), every save grouped by day, a button to add a past save, and a **Claimed** tab for goals you've reached.
 - **Goals**: a little garden of flowers across the bottom of the screen, with butterflies, sparkles and petals drifting over it, and the card where you enter what you're saving for (name, price, optional link and icon), or change it. **My tracker ›** at the top right goes back to the tracker.
 
@@ -78,15 +78,15 @@ Your goals and saves live in the phone's own browser storage, under the name `no
 
 ## Back up and restore
 
-**Settings** (the gear on the Goals screen) has **Back up to a file** and **Restore from a file**.
+**Settings** (the gear at the top of the Log screen) has **Back up to a file** and **Restore from a file**.
 
 - **Back up:** makes a small `.json` file with your goal, saves, claimed items and button names. On a phone it opens the share sheet, so choose *Save to Files*, AirDrop or email. On a computer it downloads. It shows the date of your last backup.
 - **Restore:** pick a backup file. The app checks the file really is a backup, asks before replacing anything, and keeps what was on the phone aside (`not-today-babe-rescue-before-restore`) in case you change your mind.
-- A new phone? Open the app, tap the gear on the first screen, and restore your file.
+- A new phone? Open the app, tap **My tracker ›**, tap the “$0 today” pill to open the Log, then the gear, and restore your file.
 
 ## Version
 
-The version shown in **Settings** (the gear on the Goals screen) comes from the `VERSION` file at the top of the project. This build is **3.0**. To release a new number, edit that file (for example `3.1`) and run `python3 scripts/build.py`.
+The version shown in **Settings** (the gear at the top of the Log screen) comes from the `VERSION` file at the top of the project. This build is **3.0**. To release a new number, edit that file (for example `3.1`) and run `python3 scripts/build.py`.
 
 ## Offline
 

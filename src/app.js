@@ -111,7 +111,7 @@ function goalHTML(){
     <div class="hrow wtop"><div class="wtext">
       <div class="wbrand">Someday ♡</div>
       <h1>Little things<br>lead to big blooms</h1>
-    </div><button class="homebtn" id="opensettings" aria-label="Settings">⚙️</button><button class="todaylink" id="totracker">My tracker ›</button></div>
+    </div><button class="todaylink" id="totracker">My tracker ›</button></div>
     ${goalForm()}
     <div class="gpanel" id="gpanel" hidden><div class="tag" style="margin-bottom:8px">Pick an icon</div><div class="gpgrid">${WISH_EMOJIS.map(e=>`<button type="button" data-gemo="${e}" aria-label="Use ${e}">${e}</button>`).join('')}</div></div>
   </div>`;
@@ -137,9 +137,9 @@ function homeHTML(){
   const tiles=TILES.map(t=>`<button class="tile ${t.custom?'other':''}" data-cat="${t.id}"><span class="blob">${t.emoji}</span><span>${t.label}</span></button>`).join('');
   return `<div class="screen">
     <div class="hrow"><h1>Little things<br>lead to big blooms <span>♡</span></h1><div class="hbtns"><button class="todaylink" id="openlog">${money(sum(ts))} today ›</button></div></div>
-    <div class="gwrap"><div id="scene"></div></div>
+    <div class="gwrap ${w?'':'empty'}"><div id="scene"></div>${w?'':'<div class="emptynote">Your garden starts<br>with the first drop.<i></i></div>'}</div>
     <div class="dock">
-      <div class="goalchip ${w?'':'empty'}" id="goalcard" role="button" tabindex="0" aria-label="${w?'Edit goal':'Enter goal'}">${w?chipInner():'<div class="gplus">＋</div><div class="gname">Enter goal</div>'}</div>
+      <div class="goalchip ${w?'':'empty'}" id="goalcard" role="button" tabindex="0" aria-label="${w?'Edit goal':'Plant a goal'}">${w?chipInner():'<div class="gplus">＋</div><div class="gname">Plant a goal</div>'}</div>
       <div class="pick"><div class="q"><span>What did you save on?</span><button class="editlink" id="editbtns">Edit</button></div><div class="tiles">${tiles}</div></div>
     </div>
   </div>`;
@@ -323,7 +323,7 @@ function logHTML(){
   const max=Math.max(1,...days.map(d=>d.total)),weekTotal=sum(days.map(d=>({amount:d.total})));
   const weekCount=state.skips.filter(s=>days.some(d=>d.k===dayKey(s.ts))).length;
   return `<div class="screen">
-    <div class="head2"><h1>Your saves</h1><button class="icon" id="close" aria-label="Close">✕</button></div>
+    <div class="head2"><h1>Your saves</h1><div class="hgroup"><button class="icon gear" id="opensettings" aria-label="Settings">⚙️</button><button class="icon" id="close" aria-label="Close">✕</button></div></div>
     <div class="tabs" role="tablist"><button role="tab" data-tab="saves" class="${logTab==='saves'?'on':''}">Saves</button><button role="tab" data-tab="claimed" class="${logTab==='claimed'?'on':''}">Claimed${(state.claimed||[]).length?' · '+state.claimed.length:''}</button></div>
     ${logTab==='claimed'?`<div class="log">${claimedHTML()}</div>`:`<button class="addpast" id="addpast">＋ Add a past save</button>
     <div class="weekhead"><span>This week</span><b>${money(weekTotal)}</b><span>· ${weekCount} save${weekCount===1?'':'s'}</span><i class="whint">tap a bar</i></div>
@@ -370,10 +370,10 @@ function mountViz(){
     const gw=$('.gwrap'),sc=$('#scene');
     let ruler=null;
     /* the scene sits on the left; the ruler gets its own gutter on the right so they never overlap */
-    const fit=()=>{const W=gw.clientWidth,H=gw.clientHeight,s=Math.min(W-66+30,H*340/406);sc.style.width=s+'px';sc.style.height=(s*406/340)+'px';
+    const fit=()=>{const W=gw.clientWidth,H=gw.clientHeight,s=Math.min(W-(w?36:0),H*340/406);sc.style.width=s+'px';sc.style.height=(s*406/340)+'px';
       if(ruler){ruler.style.top=(sc.offsetTop+.11*sc.offsetHeight)+'px';ruler.style.height=(.855*sc.offsetHeight)+'px'}};
     fit();fitRO=new ResizeObserver(fit);fitRO.observe(gw);
-    viz=new BotanicalProgress(sc,{progress:p,goal:w?w.price:undefined,current:w?wishSaved():undefined,from:shown});
+    viz=new BotanicalProgress(sc,{progress:p,goal:w?w.price:undefined,current:w?wishSaved():undefined,from:shown,seed:!w});
     if(w){
       /* the ruler: goal split in thirds, like the reference; the pill rises with the water */
       const tick=k=>`<div class="rtick" data-f="${(3-k)/3}" style="top:${k*100/3}%"><span class="rl">${money(Math.round(w.price*(3-k)/3))}</span></div>`;

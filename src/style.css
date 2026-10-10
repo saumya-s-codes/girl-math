@@ -457,3 +457,15 @@ button.wcol{background:none;padding:0;font:inherit;color:inherit;cursor:pointer;
 .scard .ssub{font-size:15px;color:var(--soft);font-style:italic;margin:6px 6px 0}
 .scard .btn.outline{margin-top:0;padding:12px 20px;font-size:19px}
 .scard .snote{font-size:14px;color:var(--soft);text-align:center;margin:0 0 2px}
+
+/* the empty tracker: centred, with a line of encouragement above the vase */
+.gwrap.empty{justify-content:center}
+.gwrap.empty #scene{margin-left:0}
+.emptynote{position:absolute;left:0;right:0;top:9%;text-align:center;font-style:italic;font-size:25px;line-height:1.22;color:#A18C77;pointer-events:none}
+.emptynote i{display:block;width:34px;height:2px;border-radius:2px;background:#CDBBA5;margin:12px auto 0}
+
+.goalchip.empty .gname{font-size:17px;white-space:nowrap;letter-spacing:-.2px;font-weight:600}
+
+/* Settings lives in the history header, beside the close button */
+.hgroup{display:flex;align-items:center;gap:2px}
+.icon.gear{font-size:23px}
