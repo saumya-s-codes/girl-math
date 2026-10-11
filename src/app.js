@@ -392,7 +392,7 @@ function logHTML(){
   const max=Math.max(1,...days.map(d=>d.total)),weekTotal=sum(days.map(d=>({amount:d.total})));
   const weekCount=state.skips.filter(s=>days.some(d=>d.k===dayKey(s.ts))).length;
   return `<div class="screen">
-    <div class="head2"><h1>Your saves</h1><div class="hgroup"><button class="icon gear" id="opensettings" aria-label="Settings">⚙️</button><button class="icon" id="close" aria-label="Close">✕</button></div></div>
+    <div class="head2"><h1>Your saves</h1><div class="hgroup"><button class="icon gear" id="opensettings" aria-label="Settings"><img class="gico" src="${ICONS.settings}" alt="" draggable="false"></button><button class="icon" id="close" aria-label="Close">✕</button></div></div>
     <div class="tabs" role="tablist"><button role="tab" data-tab="saves" class="${logTab==='saves'?'on':''}">Saves</button><button role="tab" data-tab="claimed" class="${logTab==='claimed'?'on':''}">Claimed${(state.claimed||[]).length?' · '+state.claimed.length:''}</button></div>
     ${logTab==='claimed'?`<div class="log">${claimedHTML()}</div>`:`<button class="addpast" id="addpast">＋ Add a past save</button>
     <div class="weekhead"><span>This week</span><b>${money(weekTotal)}</b><span>· ${weekCount} save${weekCount===1?'':'s'}</span><i class="whint">tap a bar</i></div>

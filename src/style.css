@@ -482,3 +482,7 @@ button.wcol{background:none;padding:0;font:inherit;color:inherit;cursor:pointer;
 .item .hico{display:grid;place-items:center;width:34px;height:34px}
 .item .hico .gico{width:32px;height:32px}
 .dicon .iconpick .gico{width:36px;height:36px}
+
+/* the painted settings gear */
+.icon.gear{display:grid;place-items:center;padding:0;width:46px;height:46px}
+.icon.gear .gico{width:42px;height:42px}
