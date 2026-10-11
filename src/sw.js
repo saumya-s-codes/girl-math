@@ -4,7 +4,7 @@
 const VERSION='{{VERSION}}';
 const SHELL='ntb-shell-'+VERSION;
 const FONTS='ntb-fonts-v1';
-const FILES=['./','./index.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png','./icons/apple-touch-icon.png','./icons/favicon-64.png'];
+const FILES=['./','./index.html','./manifest.webmanifest','./icons/apple-touch-icon.png','./icons/favicon-64.png'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(SHELL).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()));

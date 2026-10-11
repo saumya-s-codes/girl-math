@@ -75,6 +75,12 @@ The icons you pick for a goal are 40 hand-painted pictures (travel, sweater, sne
 
 The save buttons (Coffee, Boba, Drinks, Food, Shopping), the item icon on the amount screen, its icon picker, the Edit-buttons screen and the history list all use 50 hand-painted pictures (coffee, boba, cocktail, water bottle, ice cream, snacks, takeout, delivery, fries, pastry, groceries, toys, hanging out, makeup, skincare, hair dryer, headphones, apps, games, books, stationery, candles, movies, concert, transit, rideshare, parking, clothes, home, crafts, yoga, gym, shopping bag, on sale, packages, sunglasses, jewelry, candle, plants, souvenirs, upgrade, heart, star, leaves, flower, sun, night, sparkle, bow and cloud). They live in `src/saveicons.json` and are stored by name (for example `sv:coffee`). Anything saved earlier with an emoji still shows (and anything saved with the retired smiley shows a heart): the six old default emoji display their painted twin, and any other emoji you picked shows as itself.
 
+## App icon
+
+The home-screen icon is a cream flower in a glass jar of coins, with a butterfly, on a sage-green tile. It lives in `docs/icons/`: `apple-touch-icon.png` (iPhone, 180 px), `icon-192.png` and `icon-512.png` (Android and desktop), `icon-maskable-512.png` (the same picture with extra room around it, so round or squircle masks never cut the flowers) and `favicon-64.png` (the browser tab). All are full-edge squares, because each phone rounds the corners itself. To change the icon, replace those files with new ones of the same names and sizes and run `python3 scripts/build.py`; a change to any icon produces a new app version automatically.
+
+Note: a phone keeps the icon it was given when the app was added to the home screen, so to see a new icon, delete the old home-screen icon and add the app again.
+
 ## Data safety
 
 Your goals and saves live in the phone's own browser storage, under the name `not-today-babe-v3` (the app used to be called *Not Today, Babe*; the stored names keep that old prefix on purpose, because renaming them would make existing data look gone) (the `KEY` in `src/app.js`).

@@ -30,7 +30,10 @@ print(f"wrote {out.relative_to(root)} ({len(html)/1024:.0f} KB), app version {ap
 
 # offline support: stamp the service worker with a fingerprint of the page, so every change gets a fresh cache
 import hashlib
-version = hashlib.sha1(html.encode("utf-8")).hexdigest()[:10]
+fp = hashlib.sha1(html.encode("utf-8"))
+for extra in [root / "docs" / "manifest.webmanifest"] + sorted((root / "docs" / "icons").glob("*.png")):
+    fp.update(extra.read_bytes())          # new icons or a new manifest also mean a new version
+version = fp.hexdigest()[:10]
 sw = read("sw.js").replace("{{VERSION}}", version)
 (root / "docs" / "sw.js").write_text(sw, encoding="utf-8")
 print(f"wrote docs/sw.js (version {version})")
