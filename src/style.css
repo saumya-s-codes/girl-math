@@ -469,3 +469,16 @@ button.wcol{background:none;padding:0;font:inherit;color:inherit;cursor:pointer;
 /* Settings lives in the history header, beside the close button */
 .hgroup{display:flex;align-items:center;gap:2px}
 .icon.gear{font-size:23px}
+
+/* the painted goal icons */
+.gico{width:66%;height:66%;object-fit:contain;display:block;pointer-events:none;-webkit-user-drag:none;user-select:none}
+.gpgrid .gico{width:48px;height:48px}
+.iconpick.set .gico{width:36px;height:36px}
+.goalchip .gicon{overflow:visible}
+
+/* the painted save icons */
+.blob .gico{width:64%;height:64%}
+.cemoji .gico{width:62%;height:62%}
+.item .hico{display:grid;place-items:center;width:34px;height:34px}
+.item .hico .gico{width:32px;height:32px}
+.dicon .iconpick .gico{width:36px;height:36px}

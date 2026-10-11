@@ -2,21 +2,90 @@
    5. APP — screens and layout only. All motion lives in the components.
    ===================================================================== */
 const DEFAULT_TILES=[
-  {id:'coffee',emoji:'☕',label:'Coffee',price:6,max:40,tag:'A little fuel for big things.'},
-  {id:'boba',emoji:'🧋',label:'Boba',price:7,max:40,tag:'Sweet, but you’re sweeter.'},
-  {id:'drinks',emoji:'🍹',label:'Drinks',price:14,max:60,tag:'Cheers to saving instead.'},
-  {id:'food',emoji:'🥡',label:'Food',price:18,max:80,tag:'Home-cooked and proud.'},
-  {id:'shopping',emoji:'🛍️',label:'Shopping',price:25,max:200,tag:'Closed the tab, kept the cash.'},
+  {id:'coffee',emoji:'sv:coffee',label:'Coffee',price:6,max:40,tag:'A little fuel for big things.'},
+  {id:'boba',emoji:'sv:boba',label:'Boba',price:7,max:40,tag:'Sweet, but you’re sweeter.'},
+  {id:'drinks',emoji:'sv:drinks',label:'Drinks',price:14,max:60,tag:'Cheers to saving instead.'},
+  {id:'food',emoji:'sv:takeout',label:'Food',price:18,max:80,tag:'Home-cooked and proud.'},
+  {id:'shopping',emoji:'sv:clothes',label:'Shopping',price:25,max:200,tag:'Closed the tab, kept the cash.'},
 ];
 const OTHER={id:'other',emoji:'＋',label:'Other',price:10,max:100,tag:'Every save counts.',custom:true};
-const EMOJI_CHOICES=['☕','🧋','🍹','🥡','🍪','🛍️','💄','🍕','🍔','🍟','🍰','🍦','🍷','🍺','🥗','🚕','🎬','🎮','👗','👟','💅','🧴','📚','🎧'];
 let TILES=[];
-const OTHER_EMOJIS=[...EMOJI_CHOICES,'🍫','🍩','🥂','🍸','🧁','🍜','🍣','🥐','🎟️','✈️','💐','🕯️','🧸','📱','💍','🛒','🚗','🏋️','💇','🎁'];
 let customEmoji=null,whenPast=false,whenDate=null,logTab='saves';
 const syncTiles=()=>{TILES=[...state.tiles,OTHER]};
 const niceMax=p=>Math.max(p<=8?40:p<=15?60:p<=25?100:p<=40?160:200,Math.ceil(p*2/4)*4);
-const WISH_EMOJIS=['💻','👜','👟','💄','✈️','💍','🎧','👗','🌸','📱','📷','🎮','🏠','🚗','🎁','🧳','📚','🛋️','⌚','🎟️','🏖️','🐶','🚲','🎸','🎨','🧴','💎','👠','🖥️','⌨️','📺','🎬','🎤','🎹','🥁','🎻','📖','✏️','🧶','🧵','👛','🧣','🧢','👒','👓','🕶️','🩰','👙','🧥','🧦','💅','💆','🛁','🪞','🏋️','🧘','⛷️','🏄','🏕️','🗼','🗽','🏝️','🚢','🚂','🛵','🏍️','🍽️','☕','🍷','🎂','🍰','🌷','🌹','🪴','🛏️','🪑','💡','🧺','🐱','🐰','🦋','🎓','💼','🔑','💰','🎄','🎈','🎀'];
-const ALL_EMOJIS=[...new Set([...WISH_EMOJIS,...OTHER_EMOJIS])];
+/* the goal icons: hand-painted pictures, stored by name as "ic:<name>". Older goals saved a plain emoji, which still shows. */
+const GOAL_ICONS=[['plane','Travel'],['sweater','Sweater'],['sneaker','Sneakers'],['bag','Handbag'],['ring','Ring'],['pasta','Dinner'],['lipstick','Makeup'],['skincare','Skincare'],
+ ['brush','Hair'],['candle','Candle'],['laptop','Laptop'],['phone','Phone'],['camera','Camera'],['gamepad','Games'],['house','Home'],['armchair','Furniture'],
+ ['plant','Plant'],['car','Car'],['backpack','Backpack'],['grad','School'],['books','Books'],['fitness','Fitness'],['health','Health'],['cheers','Celebration'],
+ ['cake','Treat'],['gift','Gift'],['wedding','Wedding'],['family','Family'],['dog','Pet'],['concert','Concert'],['art','Art'],['bunny','Plush'],
+ ['safe','Savings'],['leaves','Leaves'],['heart','Love'],['moon','Rest'],['sparkles','Sparkle'],['seedling','Seedling'],['daisy','Flower'],['bow','Bow']].map(([id,label])=>({id,label}));
+const DEFAULT_GOAL_ICON='ic:daisy';
+const iconHTML=v=>{
+  if(typeof v==='string'&&v.startsWith('ic:')&&ICONS[v.slice(3)])return `<img class="gico" src="${ICONS[v.slice(3)]}" alt="" draggable="false">`;
+  return esc(v||'');
+};
+/* the save icons: hand-painted pictures, stored by name as "sv:<name>". Saves and buttons made before these existed
+   stored a plain emoji; the six old defaults show their painted twin, anything else still shows as the emoji it is. */
+const SAVE_ICON_LIST=[
+ ['coffee','Coffee'],
+ ['boba','Boba'],
+ ['drinks','Drinks'],
+ ['bottle','Water'],
+ ['icecream','Ice cream'],
+ ['snacks','Snacks'],
+ ['takeout','Takeout'],
+ ['delivery','Delivery'],
+ ['fries','Fries'],
+ ['pastry','Pastry'],
+ ['basket','Groceries'],
+ ['toys','Toys'],
+ ['friends','Hanging out'],
+ ['makeup','Makeup'],
+ ['skincare','Skincare'],
+ ['hairdryer','Hair'],
+ ['headphones','Music'],
+ ['apps','Apps'],
+ ['games','Games'],
+ ['book','Books'],
+ ['pencilcase','Stationery'],
+ ['candles','Candles'],
+ ['popcorn','Movies'],
+ ['ticket','Concert'],
+ ['transit','Transit'],
+ ['rideshare','Rideshare'],
+ ['parking','Parking'],
+ ['clothes','Clothes'],
+ ['pillow','Home'],
+ ['crafts','Crafts'],
+ ['yoga','Yoga'],
+ ['gym','Gym'],
+ ['shoppingbag','Shopping bag'],
+ ['sale','On sale'],
+ ['package','Packages'],
+ ['sunglasses','Sunglasses'],
+ ['bracelet','Jewelry'],
+ ['candlejar','Candle'],
+ ['monstera','Plants'],
+ ['souvenir','Souvenirs'],
+ ['upgrade','Upgrade'],
+ ['heart','Treat yourself'],
+ ['star','Star'],
+ ['leaves','Leaves'],
+ ['flower','Flower'],
+ ['sun','Sun'],
+ ['moon','Night'],
+ ['sparkles','Sparkle'],
+ ['bow','Bow'],
+ ['cloud','Cloud']].map(([id,label])=>({id,label}));
+const LEGACY_SAVE={'☕':'coffee','🧋':'boba','🍹':'drinks','🥡':'takeout','🛍️':'clothes','🌼':'flower'};
+const DEFAULT_OTHER_ICON='sv:flower';
+const saveIcon=v=>{
+  let id=null;
+  if(typeof v==='string'&&v.startsWith('sv:'))id=v.slice(3);else if(LEGACY_SAVE[v])id=LEGACY_SAVE[v];
+  if(id==='smile')id='heart';                     /* the smiley was retired: anything saved with it shows a heart */
+  if(id&&SAVE_ICONS[id])return `<img class="gico" src="${SAVE_ICONS[id]}" alt="" draggable="false">`;
+  return esc(v||'');
+};
 /* ===== DATA SAFETY: read this before changing anything here =====
    (The app is now called Someday, but these stored names still begin with 'not-today-babe' ON PURPOSE.
    They are internal. Renaming them would make existing data look gone.)
@@ -99,7 +168,7 @@ function toast(m,ms=2000,action){
 /* ---------- screens ---------- */
 function chipInner(){
   const w=state.wish,pct=pctNow(),saved=wishSaved();
-  return `<div class="gicon">${w.emoji}</div>
+  return `<div class="gicon">${iconHTML(w.emoji)}</div>
         <div class="gname">${esc(w.name)}</div>
         <div class="gsub">${money(Math.min(saved,w.price))} of ${money(w.price)}</div>
         ${w.url?`<a class="glink" id="golink" href="${esc(w.url)}" target="_blank" rel="noopener noreferrer">View item ↗</a>`:''}
@@ -113,7 +182,7 @@ function goalHTML(){
       <h1>Little things<br>lead to big blooms</h1>
     </div><button class="todaylink" id="totracker">My tracker ›</button></div>
     ${goalForm()}
-    <div class="gpanel" id="gpanel" hidden><div class="tag" style="margin-bottom:8px">Pick an icon</div><div class="gpgrid">${WISH_EMOJIS.map(e=>`<button type="button" data-gemo="${e}" aria-label="Use ${e}">${e}</button>`).join('')}</div></div>
+    <div class="gpanel" id="gpanel" hidden><div class="tag" style="margin-bottom:8px">Pick an icon</div><div class="gpgrid">${GOAL_ICONS.map(g=>`<button type="button" data-gemo="ic:${g.id}" aria-label="${g.label}">${iconHTML('ic:'+g.id)}</button>`).join('')}</div></div>
   </div>`;
 }
 function bloomedHTML(){
@@ -125,7 +194,7 @@ function bloomedHTML(){
     <h1>${esc(c.name)} Bloomed!</h1>
     <div class="bsub">All your little choices added up<br>to something big. ♡</div>
     <div class="bcard"><span class="bspk s1" aria-hidden="true">✦</span><span class="bspk s2" aria-hidden="true">✦</span><span class="bspk s3" aria-hidden="true">✦</span>
-      <div class="bicon">${esc(c.emoji||'🌸')}</div>
+      <div class="bicon">${iconHTML(c.emoji||DEFAULT_GOAL_ICON)}</div>
       <div class="btext"><div class="bsaved"><span id="bamt">${money(c.saved!=null?c.saved:c.price)}</span> <small>saved</small></div>
         <div class="bline">You reached your goal for ${esc(c.name)}!</div></div></div>
     <button class="btn" id="newgoal"><span class="bsp">✦</span> Add new goal <span class="bsp">✦</span></button>
@@ -134,7 +203,7 @@ function bloomedHTML(){
 }
 function homeHTML(){
   const w=state.wish,pct=pctNow(),ts=todaySkips(),saved=wishSaved();
-  const tiles=TILES.map(t=>`<button class="tile ${t.custom?'other':''}" data-cat="${t.id}"><span class="blob">${t.emoji}</span><span>${t.label}</span></button>`).join('');
+  const tiles=TILES.map(t=>`<button class="tile ${t.custom?'other':''}" data-cat="${t.id}"><span class="blob">${saveIcon(t.emoji)}</span><span>${t.label}</span></button>`).join('');
   return `<div class="screen">
     <div class="hrow"><h1>Little things<br>lead to big blooms <span>♡</span></h1><div class="hbtns"><button class="todaylink" id="openlog">${money(sum(ts))} today ›</button></div></div>
     <div class="gwrap ${w?'':'empty'}"><div id="scene"></div>${w?'':'<div class="emptynote">Your garden starts<br>with the first drop.<i></i></div>'}</div>
@@ -179,7 +248,7 @@ function addHTML(){
     </div>
     <div class="dcard">
       <div class="drow">
-        <div class="dicon"><button type="button" class="iconpick set" id="apickbtn" aria-label="Choose an icon" aria-expanded="false">${customEmoji||(t.custom?'🌼':t.emoji)}</button><span class="dchg">tap to change</span></div>
+        <div class="dicon"><button type="button" class="iconpick set" id="apickbtn" aria-label="Choose an icon" aria-expanded="false">${saveIcon(customEmoji||(t.custom?DEFAULT_OTHER_ICON:t.emoji))}</button><span class="dchg">tap to change</span></div>
         <div class="dfield">
           <input id="alabel" class="dname" maxlength="24" placeholder="What was it?" value="${esc(customLabel)}" aria-label="What you saved on">
           <input id="note" class="notein" maxlength="100" placeholder="Add a note (optional)" value="${esc(note)}" aria-label="Note">
@@ -189,7 +258,7 @@ function addHTML(){
         <label class="wpick on"><span id="wlabel">${esc(fmtLong(whenDate))}</span><input type="date" id="wdate" max="${isoDay(0)}" value="${whenDate}" aria-label="Pick a date"></label></div>
       <div class="whenhint" id="whenhint">${whenHint()}</div>`:''}
     </div>
-    <div class="gpanel apanel" id="apanel" hidden><div class="tag" style="margin-bottom:8px">Pick an icon</div><div class="gpgrid">${ALL_EMOJIS.map(e=>`<button type="button" data-aemo="${e}" aria-label="Use ${e}">${e}</button>`).join('')}</div></div>
+    <div class="gpanel apanel" id="apanel" hidden><div class="tag" style="margin-bottom:8px">Pick an icon</div><div class="gpgrid">${SAVE_ICON_LIST.map(g=>`<button type="button" data-aemo="sv:${g.id}" aria-label="${g.label}">${saveIcon('sv:'+g.id)}</button>`).join('')}</div></div>
     <button class="btn" id="addbtn"><span class="bsp">✦</span> Add to my log <span class="bsp">✦</span></button>
   </div>`;
 }
@@ -209,16 +278,16 @@ function goalForm(){
       <input id="wname" maxlength="40" placeholder="What are you saving for?" value="${w?esc(w.name):''}" aria-label="Goal name">
       <input id="wprice" type="number" inputmode="decimal" min="1" placeholder="How much is it? ($)" value="${w?w.price:''}" aria-label="Goal price">
       <input id="wurl" type="url" inputmode="url" autocapitalize="off" autocorrect="off" placeholder="Link to the item (optional)" value="${w&&w.url?esc(w.url):''}" aria-label="Link to the item">
-      <div class="iconrow"><button type="button" class="iconpick ${draftEmoji?'set':''}" id="gpickbtn" aria-label="Choose an icon" aria-expanded="false">${draftEmoji||'＋'}</button><span class="iconhint" id="gpickhint">${draftEmoji?'Tap to change the icon':'Add an icon (optional)'}</span></div>
+      <div class="iconrow"><button type="button" class="iconpick ${draftEmoji?'set':''}" id="gpickbtn" aria-label="Choose an icon" aria-expanded="false">${draftEmoji?iconHTML(draftEmoji):'＋'}</button><span class="iconhint" id="gpickhint">${draftEmoji?'Tap to change the icon':'Add an icon (optional)'}</span></div>
       <button class="btn" id="savegoal">${first?'Plant it':'Save goal'}</button>
     </div>
   </div>`;
 }
 function customHTML(){
-  const rows=state.tiles.map((t,i)=>`<div class="crow"><button class="cemoji blob b${i+1}" data-pick="${i}" aria-label="Change icon for ${esc(t.label)}">${t.emoji}</button>
+  const rows=state.tiles.map((t,i)=>`<div class="crow"><button class="cemoji blob b${i+1}" data-pick="${i}" aria-label="Change icon for ${esc(t.label)}">${saveIcon(t.emoji)}</button>
       <input class="cname" data-name="${i}" maxlength="14" value="${esc(t.label)}" aria-label="Button name">
       <label class="cprice"><span>$</span><input data-cprice="${i}" type="number" inputmode="decimal" min="1" value="${t.price}" aria-label="Usual amount"></label></div>
-      ${pickRow===i?`<div class="cpick">${EMOJI_CHOICES.map(e=>`<button data-emo="${e}" aria-label="Use ${e}">${e}</button>`).join('')}</div>`:''}`).join('');
+      ${pickRow===i?`<div class="cpick">${SAVE_ICON_LIST.map(g=>`<button data-emo="sv:${g.id}" aria-label="${g.label}">${saveIcon('sv:'+g.id)}</button>`).join('')}</div>`:''}`).join('');
   return `<div class="screen">
     <div class="head2"><h1>Your buttons</h1><button class="icon" id="close" aria-label="Close">✕</button></div>
     <div class="tag" style="margin-top:-4px">Rename them, pick an icon, and set what you usually spend. “Other” stays free-form.</div>
@@ -233,7 +302,7 @@ const dayLabel=ts=>{
   return d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
 };
 function pastpickHTML(){
-  const tiles=TILES.map(t=>`<button class="tile ${t.custom?'other':''}" data-past="${t.id}"><span class="blob">${t.emoji}</span><span>${esc(t.label)}</span></button>`).join('');
+  const tiles=TILES.map(t=>`<button class="tile ${t.custom?'other':''}" data-past="${t.id}"><span class="blob">${saveIcon(t.emoji)}</span><span>${esc(t.label)}</span></button>`).join('');
   return `<div class="screen">
     <div class="head2"><h1>Add a past save</h1><button class="icon" id="close" aria-label="Close">✕</button></div>
     <div class="tag" style="margin-top:-4px">Forgot to log something? Pick what it was, then choose the day. For a donut or anything else, use Other.</div>
@@ -247,7 +316,7 @@ function claimedHTML(){
   const fmt=ts=>new Date(ts).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
   return `<div class="claimsum"><b>${list.length}</b> claimed · <b>${money(total)}</b> saved up</div>`+list.map((c,i)=>{
     const days=c.claimedAt&&c.start?Math.max(1,Math.round((c.claimedAt-c.start)/86400000)):null;
-    return `<div class="cl"><div class="gicon">${esc(c.emoji||'🌸')}</div>
+    return `<div class="cl"><div class="gicon">${iconHTML(c.emoji||DEFAULT_GOAL_ICON)}</div>
       <div class="cltext"><div class="gname">${esc(c.name)}</div>
         <div class="gsub">${money(c.price)}${c.claimedAt?` · claimed ${fmt(c.claimedAt)}`:''}${days?` · ${days} day${days===1?'':'s'}`:''}</div>
         ${c.url?`<a class="glink" href="${esc(c.url)}" data-openlink="${esc(c.url)}" target="_blank" rel="noopener noreferrer">View item ↗</a>`:''}</div>
@@ -330,7 +399,7 @@ function logHTML(){
     <div class="week" role="group" aria-label="Saves over the last seven days">${weekCols(days,max)}</div>
     <div class="log">${groups.length?groups.map(g=>`
       <div class="dayhead"><span>${dayLabel(g.ts)}</span><span>${money(sum(g.items))}</span></div>
-      ${g.items.map(s=>`<div class="item"><span>${s.emoji}</span><span class="l">${esc(s.label)}${s.note?`<small>${esc(s.note)}</small>`:''}</span><span class="a">${money(s.amount)}</span>
+      ${g.items.map(s=>`<div class="item"><span class="hico">${saveIcon(s.emoji)}</span><span class="l">${esc(s.label)}${s.note?`<small>${esc(s.note)}</small>`:''}</span><span class="a">${money(s.amount)}</span>
         <button class="x" data-del="${s.id}" aria-label="Remove ${esc(s.label)}">✕</button></div>`).join('')}`).join(''):'<div class="empty">Nothing yet.<br>Walk past the coffee shop and come back. ☕</div>'}</div>`}
     ${memoryOnly?'<p class="tag" style="text-align:center">Saving isn’t available here, so this session won’t be kept.</p>':''}
   </div>`;
@@ -601,7 +670,7 @@ function addSkip(){
   setTimeout(()=>{
     const label=customLabel.trim()||(cat.custom?'Something fun':cat.label);
     const before=pctNow();
-    state.skips.push({id:uidS(),label,emoji:customEmoji||(cat.custom?'🌼':cat.emoji),amount:amt,note:note.trim(),ts:chosenTs()});
+    state.skips.push({id:uidS(),label,emoji:customEmoji||(cat.custom?DEFAULT_OTHER_ICON:cat.emoji),amount:amt,note:note.trim(),ts:chosenTs()});
     const wasPast=whenPast;whenPast=false;
     save();saving=false;view=wasPast?'log':'home';render();
     if(wasPast)toast('Added to your history');
@@ -710,7 +779,7 @@ function bind(){
       btn.setAttribute('aria-expanded','true');document.addEventListener('pointerdown',outside,true);
     };
     btn.onclick=()=>panel.hidden?open():close();
-    panel.querySelectorAll('[data-aemo]').forEach(b=>b.onclick=()=>{customEmoji=b.dataset.aemo;btn.textContent=customEmoji;close()});
+    panel.querySelectorAll('[data-aemo]').forEach(b=>b.onclick=()=>{customEmoji=b.dataset.aemo;btn.innerHTML=saveIcon(customEmoji);close()});
   }
   if($('#bubble')){
     const bub=$('#bubble'),val=$('#bval'),inp=$('#bubin');let editing=false;
@@ -772,7 +841,7 @@ function bind(){
     };
     btn.onclick=()=>panel.hidden?open():close();
     panel.querySelectorAll('[data-gemo]').forEach(b=>b.onclick=()=>{
-      draftEmoji=b.dataset.gemo;btn.textContent=draftEmoji;btn.classList.add('set');
+      draftEmoji=b.dataset.gemo;btn.innerHTML=iconHTML(draftEmoji);btn.classList.add('set');
       $('#gpickhint').textContent='Tap to change the icon';close();
     });
   }
@@ -785,7 +854,7 @@ function bind(){
       if(!/^https?:\/\//i.test(url))url='https://'+url;
       try{const u=new URL(url);if(!u.hostname.includes('.'))throw 0;url=u.href}catch(e){toast('That link doesn’t look right');return}
     }
-    state.wish={name,price,emoji:draftEmoji||'🌸',url,start:state.wish?state.wish.start:startForNewGoal()};
+    state.wish={name,price,emoji:draftEmoji||DEFAULT_GOAL_ICON,url,start:state.wish?state.wish.start:startForNewGoal()};
     if(first)shown=null;
     save();view='home';render();toast(first?'Planted. Let’s grow it.':'Goal updated.');
   };

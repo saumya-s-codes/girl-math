@@ -19,6 +19,8 @@ html = (
     read("template.html")
     .replace("{{CSS}}", read("style.css"))
     .replace("{{ART}}", read("art.json").strip())
+    .replace("{{ICONS}}", read("icons.json").strip())
+    .replace("{{SAVEICONS}}", read("saveicons.json").strip())
     .replace("{{JS}}", js)
     .replace("{{APP_VERSION}}", app_version)
 )

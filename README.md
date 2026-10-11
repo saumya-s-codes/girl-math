@@ -67,6 +67,14 @@ python3 scripts/build.py
 
 Sprites in `art.json` are looked up by name, for example `fl_pink_full`, `bf_purple_lw`, `pet0`, `spk1`. Keep the names, replace the images and their anchor points (`ax, ay` = base of the stem, `hx, hy` = centre of the head), then adjust `LAYOUT` in `src/progress.js` if sizes changed.
 
+## Goal icons
+
+The icons you pick for a goal are 40 hand-painted pictures (travel, sweater, sneakers, handbag, ring, dinner, makeup, laptop, phone, camera, home, car, books, gift, dog, savings and more), stored in `src/icons.json` and built into the page. A goal remembers its icon by name (for example `ic:plane`). Goals saved before these existed kept a plain emoji, which still shows normally until you pick a new icon. 
+
+## Save icons
+
+The save buttons (Coffee, Boba, Drinks, Food, Shopping), the item icon on the amount screen, its icon picker, the Edit-buttons screen and the history list all use 50 hand-painted pictures (coffee, boba, cocktail, water bottle, ice cream, snacks, takeout, delivery, fries, pastry, groceries, toys, hanging out, makeup, skincare, hair dryer, headphones, apps, games, books, stationery, candles, movies, concert, transit, rideshare, parking, clothes, home, crafts, yoga, gym, shopping bag, on sale, packages, sunglasses, jewelry, candle, plants, souvenirs, upgrade, heart, star, leaves, flower, sun, night, sparkle, bow and cloud). They live in `src/saveicons.json` and are stored by name (for example `sv:coffee`). Anything saved earlier with an emoji still shows (and anything saved with the retired smiley shows a heart): the six old default emoji display their painted twin, and any other emoji you picked shows as itself.
+
 ## Data safety
 
 Your goals and saves live in the phone's own browser storage, under the name `not-today-babe-v3` (the app used to be called *Not Today, Babe*; the stored names keep that old prefix on purpose, because renaming them would make existing data look gone) (the `KEY` in `src/app.js`).
